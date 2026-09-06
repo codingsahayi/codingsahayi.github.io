@@ -101,7 +101,7 @@
             <TextBlock x:Name="WorkspacePathText" Grid.Column="0" VerticalAlignment="Center" Foreground="Gray" FontFamily="Consolas" />
             
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                <Button Content="Clear Chat" Click="ClearChat_Click" Background="#333333" Foreground="White" BorderThickness="0" CornerRadius="4" Padding="12,6"/>
+                <Button Content="Clear Chat" Click="ClearChat_Click" Background="#0078D4" Foreground="White" BorderThickness="0" CornerRadius="4" Padding="12,6"/>
                 <Button Click="NewChat_Click" Background="#333333" Foreground="White" BorderThickness="0" CornerRadius="4" Padding="12,6">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <SymbolIcon Symbol="Add" />

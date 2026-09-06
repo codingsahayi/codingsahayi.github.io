@@ -185,8 +185,8 @@ public class AgentContextManager
     {
         try
         {
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
-            var pingHistory = new List<ChatMessage> { new UserChatMessage("hi") };
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var pingHistory = new List<ChatMessage> { new UserChatMessage("Respond with exactly one word: pong.") };
             await _localApiClient.CompleteChatAsync(pingHistory, cancellationToken: cts.Token);
             return true;
         }

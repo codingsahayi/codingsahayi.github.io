@@ -42,6 +42,32 @@
                     </toolkit:SettingsCard>
                 </toolkit:SettingsExpander.Items>
             </toolkit:SettingsExpander>
+
+            <toolkit:SettingsExpander Header="Local Model Fine-Tuning"
+                                      Description="LoRA fine-tune the local model on your ProjectKnowledge database via Soup CLI"
+                                      IsExpanded="False">
+                <toolkit:SettingsExpander.HeaderIcon>
+                    <FontIcon Glyph="&#xE9D5;" />
+                </toolkit:SettingsExpander.HeaderIcon>
+                <toolkit:SettingsExpander.Items>
+                    <toolkit:SettingsCard ContentAlignment="Left">
+                        <StackPanel Spacing="12">
+                            <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                                       Text="Exports your ProjectKnowledge entries to a JSONL dataset, generates a soup.yaml LoRA config (with layer streaming enabled), and runs 'soup train' in a PTY terminal. Requires the Soup CLI to be installed and accessible in PATH." />
+                            <Button x:Name="StartFineTuningButton"
+                                    Content="▶  Start Fine-Tuning"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="StartFineTuningButton_Click" />
+                            <TextBlock x:Name="FineTuneStatusText"
+                                       TextWrapping="Wrap"
+                                       FontFamily="Consolas"
+                                       FontSize="12"
+                                       Opacity="0.85"
+                                       Text="" />
+                        </StackPanel>
+                    </toolkit:SettingsCard>
+                </toolkit:SettingsExpander.Items>
+            </toolkit:SettingsExpander>
         </StackPanel>
     </ScrollViewer>
 </ContentDialog>

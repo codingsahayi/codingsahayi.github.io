@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml.Controls;
 
 namespace CodingSahayi;
@@ -40,4 +42,61 @@ public sealed partial class SettingsDialog : ContentDialog
         
         SettingsManager.SystemPrompt = SystemPromptBox.Text;
     }
+
+    private async void StartFineTuningButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        // Determine workspace — use LocalApplicationData as a sensible default
+        // when no project is open; the caller can adapt this as needed.
+        string workspacePath = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CodingSahayi", "FineTuning");
+
+        // Disable the button for the duration of the run
+        StartFineTuningButton.IsEnabled = false;
+        FineTuneStatusText.Text = string.Empty;
+
+        // IProgress<T> marshals Report() calls back to the UI thread via DispatcherQueue
+        var progress = new Progress<string>(message =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                FineTuneStatusText.Text = string.IsNullOrEmpty(FineTuneStatusText.Text)
+                    ? message
+                    : FineTuneStatusText.Text + "\n" + message;
+            });
+        });
+
+        try
+        {
+            TrainingResult result = await Task.Run(() =>
+                ModelTrainerTool.RunSoupTrainingAsync(workspacePath, progress));
+
+            // Surface final metrics summary
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (result.Metrics.Count > 0)
+                {
+                    FineTuneStatusText.Text +=
+                        $"\n\n📈 Loss curve ({result.Metrics.Count} points):";
+                    foreach (var m in result.Metrics)
+                        FineTuneStatusText.Text += $"\n  step {m.Step,6}: {m.Loss:F4}";
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                FineTuneStatusText.Text += $"\n❌ Unexpected error: {ex.Message}";
+            });
+        }
+        finally
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                StartFineTuningButton.IsEnabled = true;
+            });
+        }
+    }
 }
+
