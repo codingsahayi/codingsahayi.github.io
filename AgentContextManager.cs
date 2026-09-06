@@ -98,6 +98,11 @@ public class AgentContextManager
                 "run_tests",
                 "Runs tests in a specified directory using dotnet test in a PTY, returning formatted failure output or success.",
                 BinaryData.FromString("{\"type\":\"object\",\"properties\":{\"projectPath\":{\"type\":\"string\"}},\"required\":[\"projectPath\"]}")
+            ),
+            ChatTool.CreateFunctionTool(
+                "train_local_model",
+                "Fine-tunes the local model on accumulated ProjectKnowledge entries using Soup CLI (D:\\Soup) with LoRA and layer streaming.",
+                BinaryData.FromString("{\"type\":\"object\",\"properties\":{}}")
             )
         };
 
@@ -691,6 +696,18 @@ public class AgentContextManager
                 case "run_tests":
                     toolResult = await TestRunnerTool.RunTestsAsync(ResolvePath(args.GetProperty("projectPath").GetString() ?? ""));
                     if (toolResult.Contains("Test Failures Detected") || toolResult.StartsWith("Error")) success = false;
+                    break;
+                case "train_local_model":
+                    string targetWorkspace = !string.IsNullOrWhiteSpace(WorkspaceDirectory) ? WorkspaceDirectory :
+                        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodingSahayi", "FineTuning");
+                    var trainRes = await ModelTrainerTool.RunSoupTrainingAsync(targetWorkspace);
+                    toolResult = trainRes.ExitMessage;
+                    if (trainRes.Metrics.Count > 0)
+                    {
+                        toolResult += $"\nMetrics: {trainRes.Metrics.Count} loss checkpoints recorded. Final loss: {trainRes.Metrics[^1].Loss:F4}";
+                    }
+                    if (toolResult.Contains("failed", StringComparison.OrdinalIgnoreCase) || toolResult.StartsWith("❌"))
+                        success = false;
                     break;
                 default:
                     if (toolName == "batch_patch_file")

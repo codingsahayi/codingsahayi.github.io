@@ -62,6 +62,18 @@ public static class SettingsManager
         set => LocalSettings.Values["LocalModelName"] = value;
     }
 
+    public static string SoupPath
+    {
+        get => LocalSettings.Values["SoupPath"] as string ?? @"D:\Soup";
+        set => LocalSettings.Values["SoupPath"] = value;
+    }
+
+    public static string SoupBaseModel
+    {
+        get => LocalSettings.Values["SoupBaseModel"] as string ?? "Qwen/Qwen2.5-Coder-1.5B";
+        set => LocalSettings.Values["SoupBaseModel"] = value;
+    }
+
     private static readonly List<string> DefaultModels = new()
     {
         "deepseek-ai/deepseek-v4-flash-0731",

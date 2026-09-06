@@ -109,7 +109,10 @@ public static class ModelTrainerTool
         progress?.Report($"✅ Config written → {configPath}");
 
         // ── Step 3: Execute `soup train` via PTY ──────────────────────────────
-        progress?.Report("🚀 Launching `soup train` — this may take a long time…");
+        var (app, arguments, runDir) = ResolveSoupInvocation(configPath, workspacePath);
+        progress?.Report($"🔍 Soup executable: {app}");
+        progress?.Report($"📁 Working directory: {runDir}");
+        progress?.Report($"🚀 Launching `soup train` — this may take a long time…");
 
         // 4-hour timeout to accommodate large datasets on slow hardware
         const int TimeoutSeconds = 4 * 60 * 60;
@@ -118,9 +121,9 @@ public static class ModelTrainerTool
         try
         {
             rawOutput = await PtyManager.ExecuteCommandAsync(
-                app:              "soup",
-                arguments:        $"train --config \"{configPath}\"",
-                workingDirectory: workspacePath,
+                app:              app,
+                arguments:        arguments,
+                workingDirectory: runDir,
                 timeoutSeconds:   TimeoutSeconds);
         }
         catch (Exception ex)
@@ -161,6 +164,57 @@ public static class ModelTrainerTool
             Metrics     = metrics,
             RawOutput   = rawOutput
         };
+    }
+
+    /// <summary>
+    /// Resolves the app and arguments to execute soup train, prioritizing
+    /// the configured Soup repository (e.g. D:\Soup), its virtual environment,
+    /// Python Scripts, or system PATH.
+    /// </summary>
+    public static (string App, string Arguments, string WorkingDir) ResolveSoupInvocation(string configPath, string defaultWorkingDir)
+    {
+        string soupRepo = SettingsManager.SoupPath;
+
+        // 1. Check for soup.exe inside repository venvs (.venv / venv)
+        if (!string.IsNullOrWhiteSpace(soupRepo) && Directory.Exists(soupRepo))
+        {
+            string venvSoup = Path.Combine(soupRepo, ".venv", "Scripts", "soup.exe");
+            if (File.Exists(venvSoup))
+                return (venvSoup, $"train --config \"{configPath}\"", defaultWorkingDir);
+
+            string envSoup = Path.Combine(soupRepo, "venv", "Scripts", "soup.exe");
+            if (File.Exists(envSoup))
+                return (envSoup, $"train --config \"{configPath}\"", defaultWorkingDir);
+        }
+
+        // 2. Check standard Python user Scripts directory
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string userPythonScript = Path.Combine(localAppData, "Programs", "Python", "Python312", "Scripts", "soup.exe");
+        if (File.Exists(userPythonScript))
+            return (userPythonScript, $"train --config \"{configPath}\"", defaultWorkingDir);
+
+        // 3. Check if soup.exe is in PATH
+        string? pathEnv = Environment.GetEnvironmentVariable("PATH");
+        if (pathEnv != null)
+        {
+            foreach (var dir in pathEnv.Split(';', StringSplitOptions.RemoveEmptyEntries))
+            {
+                string candidate = Path.Combine(dir, "soup.exe");
+                if (File.Exists(candidate))
+                    return (candidate, $"train --config \"{configPath}\"", defaultWorkingDir);
+            }
+        }
+
+        // 4. If cloned repo exists with src/soup_cli, run via python module
+        if (!string.IsNullOrWhiteSpace(soupRepo) && Directory.Exists(Path.Combine(soupRepo, "src", "soup_cli")))
+        {
+            string pythonExe = Path.Combine(localAppData, "Programs", "Python", "Python312", "python.exe");
+            if (!File.Exists(pythonExe)) pythonExe = "python";
+            return (pythonExe, $"-m soup_cli.cli train --config \"{configPath}\"", soupRepo);
+        }
+
+        // 5. Default fallback
+        return ("soup", $"train --config \"{configPath}\"", defaultWorkingDir);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

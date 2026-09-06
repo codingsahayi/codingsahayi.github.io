@@ -43,17 +43,23 @@
                 </toolkit:SettingsExpander.Items>
             </toolkit:SettingsExpander>
 
-            <toolkit:SettingsExpander Header="Local Model Fine-Tuning"
-                                      Description="LoRA fine-tune the local model on your ProjectKnowledge database via Soup CLI"
+            <toolkit:SettingsExpander Header="Local Model Fine-Tuning (Soup)"
+                                      Description="LoRA fine-tune on your ProjectKnowledge database using Soup (D:\Soup)"
                                       IsExpanded="False">
                 <toolkit:SettingsExpander.HeaderIcon>
                     <FontIcon Glyph="&#xE9D5;" />
                 </toolkit:SettingsExpander.HeaderIcon>
                 <toolkit:SettingsExpander.Items>
+                    <toolkit:SettingsCard Header="Soup Repository Path" Description="Path to cloned Soup repository or venv (e.g. D:\Soup)">
+                        <TextBox x:Name="SoupPathBox" Width="250" />
+                    </toolkit:SettingsCard>
+                    <toolkit:SettingsCard Header="Base Model" Description="HuggingFace model ID or local weights path (e.g. Qwen/Qwen2.5-Coder-1.5B)">
+                        <TextBox x:Name="SoupBaseModelBox" Width="250" />
+                    </toolkit:SettingsCard>
                     <toolkit:SettingsCard ContentAlignment="Left">
                         <StackPanel Spacing="12">
                             <TextBlock TextWrapping="Wrap" Opacity="0.7"
-                                       Text="Exports your ProjectKnowledge entries to a JSONL dataset, generates a soup.yaml LoRA config (with layer streaming enabled), and runs 'soup train' in a PTY terminal. Requires the Soup CLI to be installed and accessible in PATH." />
+                                       Text="Exports your ProjectKnowledge entries to a JSONL dataset, generates a soup.yaml LoRA config (with layer streaming enabled), and runs 'soup train' in a PTY terminal using the cloned Soup repo." />
                             <Button x:Name="StartFineTuningButton"
                                     Content="▶  Start Fine-Tuning"
                                     Style="{StaticResource AccentButtonStyle}"

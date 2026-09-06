@@ -22,6 +22,9 @@ public sealed partial class SettingsDialog : ContentDialog
         ModelNameBox.SelectedItem = SettingsManager.ModelName;
         
         SystemPromptBox.Text = SettingsManager.SystemPrompt;
+
+        SoupPathBox.Text = SettingsManager.SoupPath;
+        SoupBaseModelBox.Text = SettingsManager.SoupBaseModel;
     }
 
     private void ContentDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
@@ -41,10 +44,16 @@ public sealed partial class SettingsDialog : ContentDialog
         }
         
         SettingsManager.SystemPrompt = SystemPromptBox.Text;
+
+        SettingsManager.SoupPath = SoupPathBox.Text?.Trim() ?? @"D:\Soup";
+        SettingsManager.SoupBaseModel = SoupBaseModelBox.Text?.Trim() ?? "Qwen/Qwen2.5-Coder-1.5B";
     }
 
     private async void StartFineTuningButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
+        SettingsManager.SoupPath = SoupPathBox.Text?.Trim() ?? @"D:\Soup";
+        SettingsManager.SoupBaseModel = SoupBaseModelBox.Text?.Trim() ?? "Qwen/Qwen2.5-Coder-1.5B";
+
         // Determine workspace — use LocalApplicationData as a sensible default
         // when no project is open; the caller can adapt this as needed.
         string workspacePath = System.IO.Path.Combine(
