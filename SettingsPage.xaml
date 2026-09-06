@@ -1,16 +1,19 @@
-<ContentDialog
-    x:Class="CodingSahayi.SettingsDialog"
+<Page
+    x:Class="CodingSahayi.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
-    Title="Settings"
-    PrimaryButtonText="Save"
-    CloseButtonText="Cancel"
-    DefaultButton="Primary"
-    PrimaryButtonClick="ContentDialog_PrimaryButtonClick">
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <ScrollViewer MaxHeight="500">
-        <StackPanel Spacing="8" MinWidth="450">
+    <Grid Padding="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,24" />
+
+    <ScrollViewer Grid.Row="1" MaxHeight="500">
+        <StackPanel Spacing="8" MinWidth="900">
             <toolkit:SettingsExpander Header="Model Providers" Description="Configure available models and providers" IsExpanded="True">
                 <toolkit:SettingsExpander.Items>
                     <toolkit:SettingsCard ContentAlignment="Left">
@@ -98,18 +101,41 @@
                                     </ComboBox>
                                 </Grid>
 
-                                <StackPanel>
-                                    <ToggleSwitch x:Name="EditIsEnabled" Header="Enabled" IsOn="True" Margin="0,0,0,-8" />
-                                    <TextBlock Text="Allow applications to use this model." FontSize="12" Foreground="Gray" />
-                                </StackPanel>
-                                <StackPanel>
-                                    <ToggleSwitch x:Name="EditIsDefault" Header="Use as platform default" IsOn="False" Margin="0,0,0,-8" />
-                                    <TextBlock Text="New AI features inherit this model." FontSize="12" Foreground="Gray" />
-                                </StackPanel>
-                                <StackPanel>
-                                    <ToggleSwitch x:Name="EditAllowFallback" Header="Allow fallback" IsOn="True" Margin="0,0,0,-8" />
-                                    <TextBlock Text="Use when the primary model is unavailable." FontSize="12" Foreground="Gray" />
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Enabled" FontWeight="SemiBold" />
+                                        <TextBlock Text="Allow applications to use this model." FontSize="12" Foreground="Gray" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="EditIsEnabled" Grid.Column="1" IsOn="True" OnContent="" OffContent="" VerticalAlignment="Center" Margin="0" />
+                                </Grid>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Use as platform default" FontWeight="SemiBold" />
+                                        <TextBlock Text="New AI features inherit this model." FontSize="12" Foreground="Gray" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="EditIsDefault" Grid.Column="1" IsOn="False" OnContent="" OffContent="" VerticalAlignment="Center" Margin="0" />
+                                </Grid>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Allow fallback" FontWeight="SemiBold" />
+                                        <TextBlock Text="Use when the primary model is unavailable." FontSize="12" Foreground="Gray" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="EditAllowFallback" Grid.Column="1" IsOn="True" OnContent="" OffContent="" VerticalAlignment="Center" Margin="0" />
+                                </Grid>
 
                                 <Border Background="#100078D4" BorderBrush="#0078D4" BorderThickness="4,0,0,0" Padding="12" CornerRadius="0,4,4,0">
                                     <StackPanel Spacing="4">
@@ -190,4 +216,5 @@
             </toolkit:SettingsExpander>
         </StackPanel>
     </ScrollViewer>
-</ContentDialog>
+    </Grid>
+</Page>

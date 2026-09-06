@@ -240,6 +240,13 @@ public sealed partial class MainWindow : Window
 
     private void ProjectNav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
+        if (args.IsSettingsSelected)
+        {
+            ContentFrame.Visibility = Visibility.Visible;
+            ContentFrame.Navigate(typeof(SettingsPage));
+            return;
+        }
+
         if (args.SelectedItem is NavigationViewItem navItem)
         {
             if (navItem.Tag?.ToString() == "ApiMetricsPage")
@@ -252,6 +259,17 @@ public sealed partial class MainWindow : Window
             if (ContentFrame != null)
             {
                 ContentFrame.Visibility = Visibility.Collapsed;
+                
+                var modelList = new System.Collections.Generic.List<string> { "Hybrid Router (Auto)" };
+                foreach (var m in SettingsManager.ConfiguredModels.Where(x => x.IsEnabled).OrderBy(x => x.Priority))
+                {
+                    modelList.Add($"{m.DisplayName} ({m.CostTier} | P{m.Priority})");
+                }
+                ModelSelector.ItemsSource = modelList;
+                if (!modelList.Contains(SettingsManager.ModelName))
+                    SettingsManager.ModelName = "Hybrid Router (Auto)";
+                ModelSelector.SelectedItem = SettingsManager.ModelName;
+                _agentManager.ReinitializeClient();
             }
 
             CodingSahayi.Data.Project? activeProject = null;
@@ -366,28 +384,6 @@ public sealed partial class MainWindow : Window
         if (ModelSelector.SelectedItem is string selectedModel && !string.IsNullOrEmpty(selectedModel))
         {
             SettingsManager.ModelName = selectedModel;
-            _agentManager.ReinitializeClient();
-        }
-    }
-
-    private async void SettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new SettingsDialog();
-        dialog.XamlRoot = this.Content.XamlRoot;
-        var result = await dialog.ShowAsync();
-        
-        if (result == ContentDialogResult.Primary)
-        {
-            var modelList = new System.Collections.Generic.List<string> { "Hybrid Router (Auto)" };
-            foreach (var m in SettingsManager.ConfiguredModels.Where(x => x.IsEnabled).OrderBy(x => x.Priority))
-            {
-                modelList.Add($"{m.DisplayName} ({m.CostTier} | P{m.Priority})");
-            }
-            ModelSelector.ItemsSource = modelList;
-            if (!modelList.Contains(SettingsManager.ModelName))
-                SettingsManager.ModelName = "Hybrid Router (Auto)";
-            ModelSelector.SelectedItem = SettingsManager.ModelName;
-
             _agentManager.ReinitializeClient();
         }
     }

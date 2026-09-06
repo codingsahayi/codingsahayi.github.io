@@ -6,12 +6,12 @@ using System.Linq;
 
 namespace CodingSahayi;
 
-public sealed partial class SettingsDialog : ContentDialog
+public sealed partial class SettingsPage : Page
 {
     private ObservableCollection<CodingSahayi.Data.ModelEndpointConfig> _models;
     private CodingSahayi.Data.ModelEndpointConfig? _editingModel;
 
-    public SettingsDialog()
+    public SettingsPage()
     {
         this.InitializeComponent();
         
@@ -24,12 +24,11 @@ public sealed partial class SettingsDialog : ContentDialog
         SoupBaseModelBox.Text = SettingsManager.SoupBaseModel;
     }
 
-    private void ContentDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
     {
+        base.OnNavigatedFrom(e);
         SettingsManager.ConfiguredModels = _models.ToList();
-        
         SettingsManager.SystemPrompt = SystemPromptBox.Text;
-
         SettingsManager.SoupPath = SoupPathBox.Text?.Trim() ?? @"D:\Soup";
         SettingsManager.SoupBaseModel = SoupBaseModelBox.Text?.Trim() ?? "Qwen/Qwen2.5-Coder-1.5B";
     }
