@@ -175,14 +175,6 @@
                 </toolkit:SettingsExpander.Items>
             </toolkit:SettingsExpander>
             
-            <toolkit:SettingsExpander Header="System Prompt" Description="Agent rules and operating context" IsExpanded="True">
-                <toolkit:SettingsExpander.Items>
-                    <toolkit:SettingsCard ContentAlignment="Left">
-                        <TextBox x:Name="SystemPromptBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="150" HorizontalAlignment="Stretch" />
-                    </toolkit:SettingsCard>
-                </toolkit:SettingsExpander.Items>
-            </toolkit:SettingsExpander>
-
             <toolkit:SettingsExpander Header="Local Model Fine-Tuning (Soup)"
                                       Description="LoRA fine-tune on your ProjectKnowledge database using Soup (D:\Soup)"
                                       IsExpanded="False">
@@ -211,6 +203,14 @@
                                        Opacity="0.85"
                                        Text="" />
                         </StackPanel>
+                    </toolkit:SettingsCard>
+                </toolkit:SettingsExpander.Items>
+            </toolkit:SettingsExpander>
+            
+            <toolkit:SettingsExpander Header="System Prompt" Description="Agent rules and operating context" IsExpanded="True">
+                <toolkit:SettingsExpander.Items>
+                    <toolkit:SettingsCard ContentAlignment="Left">
+                        <TextBox x:Name="SystemPromptBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="150" HorizontalAlignment="Stretch" />
                     </toolkit:SettingsCard>
                 </toolkit:SettingsExpander.Items>
             </toolkit:SettingsExpander>

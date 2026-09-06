@@ -90,17 +90,27 @@ public static class SettingsManager
     {
         get
         {
+            List<CodingSahayi.Data.ModelEndpointConfig> list = new();
             var json = LocalSettings.Values["ConfiguredModels"] as string;
+            
             if (!string.IsNullOrEmpty(json))
             {
-                try { return JsonSerializer.Deserialize<List<CodingSahayi.Data.ModelEndpointConfig>>(json) ?? new List<CodingSahayi.Data.ModelEndpointConfig>(); }
+                try { list = JsonSerializer.Deserialize<List<CodingSahayi.Data.ModelEndpointConfig>>(json) ?? new(); }
                 catch { }
             }
-            return new List<CodingSahayi.Data.ModelEndpointConfig>
+            
+            // Deduplicate by BaseUrl and ModelIdentifier
+            list = list.GroupBy(x => new { x.BaseUrl, x.ModelIdentifier })
+                       .Select(g => g.First())
+                       .ToList();
+            
+            if (list.Count == 0)
             {
-                new CodingSahayi.Data.ModelEndpointConfig { DisplayName = "Ollama Local", ModelIdentifier = "gemma4:26b", BaseUrl = "http://localhost:11434/v1", Type = CodingSahayi.Data.ModelType.Local, CostTier = CodingSahayi.Data.CostTier.Local, Priority = 1 },
-                new CodingSahayi.Data.ModelEndpointConfig { DisplayName = "Claude 3.5 Sonnet", ModelIdentifier = "anthropic/claude-3.5-sonnet-20240620", BaseUrl = "https://openrouter.ai/api/v1", Type = CodingSahayi.Data.ModelType.Cloud, CostTier = CodingSahayi.Data.CostTier.Paid, Priority = 2 }
-            };
+                list.Add(new CodingSahayi.Data.ModelEndpointConfig { DisplayName = "Ollama Local", ModelIdentifier = "gemma4:26b", BaseUrl = "http://localhost:11434/v1", Type = CodingSahayi.Data.ModelType.Local, CostTier = CodingSahayi.Data.CostTier.Local, Priority = 1 });
+                list.Add(new CodingSahayi.Data.ModelEndpointConfig { DisplayName = "Claude 3.5 Sonnet", ModelIdentifier = "anthropic/claude-3.5-sonnet-20240620", BaseUrl = "https://openrouter.ai/api/v1", Type = CodingSahayi.Data.ModelType.Cloud, CostTier = CodingSahayi.Data.CostTier.Paid, Priority = 2 });
+            }
+            
+            return list;
         }
         set => LocalSettings.Values["ConfiguredModels"] = JsonSerializer.Serialize(value);
     }

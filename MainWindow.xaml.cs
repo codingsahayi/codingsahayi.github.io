@@ -74,13 +74,7 @@ public sealed partial class MainWindow : Window
         
         WorkspacePathText.Text = _agentManager.WorkspaceDirectory;
         
-        var modelList = new System.Collections.Generic.List<string> { "Hybrid Router (Auto)" };
-        foreach (var m in SettingsManager.ConfiguredModels.Where(x => x.IsEnabled).OrderBy(x => x.Priority))
-        {
-            modelList.Add($"{m.DisplayName} ({m.CostTier} | P{m.Priority})");
-        }
-        ModelSelector.ItemsSource = modelList;
-        ModelSelector.SelectedItem = SettingsManager.ModelName;
+        RefreshModelDropdown();
         ModelSelector.SelectionChanged += ModelSelector_SelectionChanged;
 
         this.Activated += MainWindow_Activated;
@@ -172,6 +166,19 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    public void RefreshModelDropdown()
+    {
+        var modelList = new System.Collections.Generic.List<string> { "Hybrid Router (Auto)" };
+        foreach (var m in SettingsManager.ConfiguredModels.Where(x => x.IsEnabled).OrderBy(x => x.Priority))
+        {
+            modelList.Add($"{m.DisplayName} ({m.CostTier} | P{m.Priority})");
+        }
+        ModelSelector.ItemsSource = modelList;
+        if (!modelList.Contains(SettingsManager.ModelName))
+            SettingsManager.ModelName = "Hybrid Router (Auto)";
+        ModelSelector.SelectedItem = SettingsManager.ModelName;
+    }
+
     private void DeleteNavItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is MenuFlyoutItem menuItem)
@@ -260,15 +267,7 @@ public sealed partial class MainWindow : Window
             {
                 ContentFrame.Visibility = Visibility.Collapsed;
                 
-                var modelList = new System.Collections.Generic.List<string> { "Hybrid Router (Auto)" };
-                foreach (var m in SettingsManager.ConfiguredModels.Where(x => x.IsEnabled).OrderBy(x => x.Priority))
-                {
-                    modelList.Add($"{m.DisplayName} ({m.CostTier} | P{m.Priority})");
-                }
-                ModelSelector.ItemsSource = modelList;
-                if (!modelList.Contains(SettingsManager.ModelName))
-                    SettingsManager.ModelName = "Hybrid Router (Auto)";
-                ModelSelector.SelectedItem = SettingsManager.ModelName;
+                RefreshModelDropdown();
                 _agentManager.ReinitializeClient();
             }
 
