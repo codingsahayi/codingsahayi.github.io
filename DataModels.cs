@@ -65,6 +65,8 @@ namespace CodingSahayi.Data
         public int Priority { get; set; } = 1; // Lower = higher priority (1 is primary)
         public string? FallbackModelId { get; set; } // Points to another ModelEndpointConfig.Id
         public bool IsEnabled { get; set; } = true;
+        public bool IsDefault { get; set; } = false;
+        public bool AllowFallback { get; set; } = true;
     }
 
     public class ApiRequestLog

@@ -610,7 +610,7 @@ public class AgentContextManager
         throw new Exception("No available models to execute the request.");
     }
 
-    private async Task LogApiRequestAsync(CodingSahayi.Data.ModelEndpointConfig config, List<ChatMessage> history, ChatCompletion completion, long latencyMs, int statusCode)
+    private async Task LogApiRequestAsync(CodingSahayi.Data.ModelEndpointConfig config, List<ChatMessage> history, ChatCompletion? completion, long latencyMs, int statusCode)
     {
         try
         {

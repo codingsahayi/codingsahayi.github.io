@@ -87,7 +87,10 @@ namespace CodingSahayi
             FailedCallsText.Text = result.Count(l => l.StatusCode < 200 || l.StatusCode >= 300).ToString();
             ActiveProvidersText.Text = result.Select(l => l.Provider).Distinct().Count().ToString();
 
-            LogsList.ItemsSource = result;
+            if (LogsList != null)
+            {
+                LogsList.ItemsSource = result;
+            }
         }
 
         private async void InspectButton_Click(object sender, RoutedEventArgs e)
