@@ -69,6 +69,13 @@
         </Grid.Resources>
 
         <NavigationView x:Name="ProjectNav" IsPaneOpen="True" PaneDisplayMode="Left" SelectionChanged="ProjectNav_SelectionChanged">
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Content="API Metrics" Tag="ApiMetricsPage">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="AllApps" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
             <NavigationView.PaneFooter>
                 <NavigationViewItem Content="New Project" Tapped="NewProject_Tapped">
                     <NavigationViewItem.Icon>
@@ -180,42 +187,43 @@
                          TextChanged="InputTextBox_TextChanged"
                          PreviewKeyDown="InputTextBox_PreviewKeyDown" />
                 
-                <Grid Grid.Row="2" Margin="0,8,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                        <Button Background="Transparent" BorderThickness="0" CornerRadius="4" Padding="8">
-                            <SymbolIcon Symbol="Add" />
-                            <Button.Flyout>
-                                <MenuFlyout>
-                                    <MenuFlyoutItem Text="Add Context" />
-                                    <MenuFlyoutItem Text="Media" />
-                                    <MenuFlyoutItem Text="@ Mentions" />
-                                    <MenuFlyoutItem Text="Actions" />
-                                    <MenuFlyoutItem Text="Browser" />
-                                </MenuFlyout>
-                            </Button.Flyout>
-                        </Button>
-                        <ComboBox x:Name="ModelSelector" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" />
-                    </StackPanel>
-                    
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <Button x:Name="MicButton" Background="Transparent" BorderThickness="0" CornerRadius="4" Padding="8">
-                            <SymbolIcon Symbol="Microphone" />
-                        </Button>
-                        <Button x:Name="SendButton" Click="SendButton_Click" 
-                                CornerRadius="20" Background="#0078D4" Width="32" Height="32" 
-                                Padding="0" Visibility="Collapsed">
-                            <SymbolIcon x:Name="SendIcon" Symbol="Send" Foreground="White" />
-                        </Button>
-                    </StackPanel>
+                    <Grid Grid.Row="2" Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                            <Button Background="Transparent" BorderThickness="0" CornerRadius="4" Padding="8">
+                                <SymbolIcon Symbol="Add" />
+                                <Button.Flyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Add Context" />
+                                        <MenuFlyoutItem Text="Media" />
+                                        <MenuFlyoutItem Text="@ Mentions" />
+                                        <MenuFlyoutItem Text="Actions" />
+                                        <MenuFlyoutItem Text="Browser" />
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                            <ComboBox x:Name="ModelSelector" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button x:Name="MicButton" Background="Transparent" BorderThickness="0" CornerRadius="4" Padding="8">
+                                <SymbolIcon Symbol="Microphone" />
+                            </Button>
+                            <Button x:Name="SendButton" Click="SendButton_Click" 
+                                    CornerRadius="20" Background="#0078D4" Width="32" Height="32" 
+                                    Padding="0" Visibility="Collapsed">
+                                <SymbolIcon x:Name="SendIcon" Symbol="Send" Foreground="White" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
-            </Grid>
-        </Border>
+            </Border>
+            <Frame x:Name="ContentFrame" Grid.Row="1" Grid.RowSpan="4" Background="#151515" Visibility="Collapsed" />
                 </Grid>
             </NavigationView.Content>
         </NavigationView>

@@ -10,8 +10,7 @@ namespace CodingSahayi;
 
 public class AgentContextManager
 {
-    private ChatClient _cloudApiClient = null!;
-    private ChatClient _localApiClient = null!;
+
     private readonly ChatCompletionOptions _chatOptions;
     private readonly List<ChatMessage> _apiHistory = new();
     
@@ -157,42 +156,30 @@ public class AgentContextManager
         }
     }
 
+    private ChatClient GetChatClient(CodingSahayi.Data.ModelEndpointConfig config)
+    {
+        var endpoint = config.BaseUrl;
+        if (!endpoint.EndsWith("/")) endpoint += "/";
+        var options = new OpenAIClientOptions { Endpoint = new Uri(endpoint), NetworkTimeout = TimeSpan.FromMinutes(10) };
+        var client = new OpenAIClient(new System.ClientModel.ApiKeyCredential(config.ApiKey ?? ""), options);
+        return client.GetChatClient(config.ModelIdentifier);
+    }
+
     private void InitializeClient()
     {
-        var apiKey = SettingsManager.SecureApiKey;
-        var endpoint = SettingsManager.ApiEndpoint;
-        if (!endpoint.EndsWith("/")) endpoint += "/";
-        
-        var model = SettingsManager.ModelName;
-        if (model == "Hybrid Router (Auto)" || model == "Local Model Only")
-        {
-            model = "anthropic/claude-3.5-sonnet-20240620"; // Fallback for the cloud client
-        }
-        
-        var cloudOptions = new OpenAIClientOptions { Endpoint = new Uri(endpoint) };
-        cloudOptions.NetworkTimeout = TimeSpan.FromMinutes(10);
-        var client = new OpenAIClient(new System.ClientModel.ApiKeyCredential(apiKey), cloudOptions);
-        _cloudApiClient = client.GetChatClient(model);
-        
-        var localApiKey = SettingsManager.LocalApiKey;
-        var localEndpoint = SettingsManager.LocalApiBaseUrl;
-        if (!localEndpoint.EndsWith("/")) localEndpoint += "/";
-        
-        var localModel = SettingsManager.LocalModelName;
-        
-        var localOptions = new OpenAIClientOptions { Endpoint = new Uri(localEndpoint) };
-        localOptions.NetworkTimeout = TimeSpan.FromMinutes(10);
-        var localClient = new OpenAIClient(new System.ClientModel.ApiKeyCredential(localApiKey), localOptions);
-        _localApiClient = localClient.GetChatClient(localModel);
+        // Handled dynamically now
     }
 
     public async Task<bool> IsLocalAvailableAsync()
     {
         try
         {
+            var localConfig = SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Local && m.IsEnabled);
+            if (localConfig == null) return false;
+            var client = GetChatClient(localConfig);
             using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
             var pingHistory = new List<ChatMessage> { new UserChatMessage("Respond with exactly one word: pong.") };
-            await _localApiClient.CompleteChatAsync(pingHistory, cancellationToken: cts.Token);
+            await client.CompleteChatAsync(pingHistory, cancellationToken: cts.Token);
             return true;
         }
         catch
@@ -222,7 +209,10 @@ public class AgentContextManager
                 ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat()
             };
             
-            var completion = await _localApiClient.CompleteChatAsync(routerHistory, routerOptions, routerCts.Token);
+            var localConfig = SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Local && m.IsEnabled);
+            if (localConfig == null) return ("API", "");
+            var client = GetChatClient(localConfig);
+            var completion = await client.CompleteChatAsync(routerHistory, routerOptions, routerCts.Token);
             var responseText = completion.Value.Content[0].Text;
             
             using var doc = JsonDocument.Parse(responseText);
@@ -268,13 +258,13 @@ public class AgentContextManager
 
         // --- ROUTING PHASE ---
         string routeDecision = "API";
-        ChatClient activeClient = _cloudApiClient;
+        CodingSahayi.Data.ModelEndpointConfig activeConfig = null;
         string currentModel = SettingsManager.ModelName;
         
         if (currentModel == "Local Model Only")
         {
             routeDecision = "LOCAL";
-            activeClient = _localApiClient;
+            activeConfig = SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Local && m.IsEnabled);
             onStatusUpdate("Using LOCAL model...");
         }
         else if (currentModel == "Hybrid Router (Auto)")
@@ -290,7 +280,7 @@ public class AgentContextManager
                 
                 if (routeDecision == "LOCAL")
                 {
-                    activeClient = _localApiClient;
+                    activeConfig = SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Local && m.IsEnabled);
                     onStatusUpdate(!string.IsNullOrEmpty(plan) 
                         ? $"Routing via LOCAL model — {plan}" 
                         : "Routing via LOCAL model...");
@@ -315,6 +305,7 @@ public class AgentContextManager
                 }
                 else
                 {
+                    activeConfig = SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Cloud && m.IsEnabled);
                     onStatusUpdate(!string.IsNullOrEmpty(plan) 
                         ? $"Routing via CLOUD API — {plan}" 
                         : "Routing via CLOUD API...");
@@ -322,14 +313,26 @@ public class AgentContextManager
             }
             else
             {
+                activeConfig = SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Cloud && m.IsEnabled);
                 onStatusUpdate("Local model offline, using CLOUD API...");
             }
         }
         else
         {
             onStatusUpdate("Using CLOUD API...");
-            activeClient = _cloudApiClient;
+            
+            string displayMatch = currentModel;
+            int parenIdx = currentModel.IndexOf(" (");
+            if (parenIdx > 0) displayMatch = currentModel.Substring(0, parenIdx);
+            
+            activeConfig = SettingsManager.ConfiguredModels.FirstOrDefault(m => m.DisplayName == displayMatch) ?? 
+                           SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Cloud && m.IsEnabled);
             routeDecision = "API";
+        }
+
+        if (activeConfig == null)
+        {
+            activeConfig = SettingsManager.ConfiguredModels.FirstOrDefault();
         }
 
         // --- AGENTIC LOOP ---
@@ -350,33 +353,8 @@ public class AgentContextManager
             
             try
             {
-                // Retry loop with exponential backoff for rate-limit errors (429/529)
-                ChatCompletion completion = null!;
-                int maxRetries = 3;
-                for (int retry = 0; retry <= maxRetries; retry++)
-                {
-                    try
-                    {
-                        onStatusUpdate(retry > 0 
-                            ? $"Retrying API call (attempt {retry + 1}/{maxRetries + 1})..." 
-                            : $"Calling {(activeClient == _localApiClient ? "LOCAL" : "CLOUD")} model... (Iteration {iterationCount}/{maxIterations})");
-                        completion = await activeClient.CompleteChatAsync(_apiHistory, _chatOptions, cancellationToken);
-                        break; // Success — exit retry loop
-                    }
-                    catch (Exception retryEx) when (retry < maxRetries && IsRateLimitError(retryEx))
-                    {
-                        int delaySeconds = (int)Math.Pow(2, retry + 1); // 2s, 4s, 8s
-                        onStatusUpdate($"Rate limited. Retrying in {delaySeconds}s... (attempt {retry + 1}/{maxRetries})");
-                        await Task.Delay(delaySeconds * 1000, cancellationToken);
-                    }
-                    catch (Exception) when (activeClient == _localApiClient && retry == 0)
-                    {
-                        // Local model failed mid-conversation — fall back to cloud
-                        onStatusUpdate("Local model error, falling back to CLOUD API...");
-                        activeClient = _cloudApiClient;
-                        // retry immediately with cloud
-                    }
-                }
+                onStatusUpdate($"Calling model {activeConfig?.DisplayName}... (Iteration {iterationCount}/{maxIterations})");
+                ChatCompletion completion = await ExecuteWithFallbackAsync(activeConfig, _apiHistory, _chatOptions, onStatusUpdate, cancellationToken);
 
                 if (completion.FinishReason == ChatFinishReason.ToolCalls)
                 {
@@ -430,7 +408,8 @@ public class AgentContextManager
                                                 NativeTools.RollbackChanges();
                                                 var retryHistory = new List<ChatMessage>(_apiHistory);
                                                 retryHistory.Add(new ToolChatMessage(toolCall.Id, $"Error: The patch caused syntax errors:\n{syntaxStatus}\nPlease generate a corrected tool call."));
-                                                var retryResp = await activeClient.CompleteChatAsync(retryHistory, _chatOptions, cancellationToken);
+                                                var clientRetry = GetChatClient(activeConfig);
+                                                var retryResp = await clientRetry.CompleteChatAsync(retryHistory, _chatOptions, cancellationToken);
                                                 if (retryResp.Value.FinishReason == ChatFinishReason.ToolCalls && retryResp.Value.ToolCalls.Count > 0)
                                                 {
                                                     argsStr = retryResp.Value.ToolCalls[0].FunctionArguments.ToString();
@@ -448,7 +427,8 @@ public class AgentContextManager
                                         try {
                                             var summaryPrompt = "Summarize the architectural change you just made in 1-2 sentences. Focus on file structure and logic.";
                                             var bgHistory = new List<ChatMessage>(_apiHistory) { new UserChatMessage(summaryPrompt) };
-                                            var resp = await _cloudApiClient.CompleteChatAsync(bgHistory, new ChatCompletionOptions { AllowParallelToolCalls = false });
+                                            var clientBg = GetChatClient(SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Cloud && m.IsEnabled));
+                                            var resp = await clientBg.CompleteChatAsync(bgHistory, new ChatCompletionOptions { AllowParallelToolCalls = false });
                                             var summaryResponse = resp.Value.Content[0].Text;
                                             
                                             using var bgDb = new CodingSahayi.Data.AppDbContext();
@@ -528,7 +508,8 @@ public class AgentContextManager
                 try {
                     var summaryPrompt = $"Generate a concise 'Design Pattern/Implementation Lesson' summarizing these changes based on the user prompt: '{userMessage}'. Modified files:\n{diffs}";
                     var bgHistory = new List<ChatMessage>(_apiHistory) { new UserChatMessage(summaryPrompt) };
-                    var resp = await _localApiClient.CompleteChatAsync(bgHistory, new ChatCompletionOptions { AllowParallelToolCalls = false });
+                    var clientBg = GetChatClient(SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Local && m.IsEnabled));
+                    var resp = await clientBg.CompleteChatAsync(bgHistory, new ChatCompletionOptions { AllowParallelToolCalls = false });
                     var summaryResponse = resp.Value.Content[0].Text;
                     
                     using var bgDb = new CodingSahayi.Data.AppDbContext();
@@ -561,13 +542,126 @@ public class AgentContextManager
         
         try
         {
-            var resp = await _localApiClient.CompleteChatAsync(new List<ChatMessage> { systemPrompt, userPrompt });
+            var localConfig = SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Local && m.IsEnabled);
+            var client = GetChatClient(localConfig ?? SettingsManager.ConfiguredModels.First());
+            var resp = await client.CompleteChatAsync(new List<ChatMessage> { systemPrompt, userPrompt });
             if (resp.Value.Content[0].Text.Contains("REJECT")) return false;
             return true;
         }
         catch
         {
             return false;
+        }
+    }
+
+    private async Task<ChatCompletion> ExecuteWithFallbackAsync(CodingSahayi.Data.ModelEndpointConfig primaryConfig, List<ChatMessage> history, ChatCompletionOptions options, Action<string> onStatusUpdate, System.Threading.CancellationToken cancellationToken)
+    {
+        var currentConfig = primaryConfig;
+        
+        while (currentConfig != null)
+        {
+            var client = GetChatClient(currentConfig);
+            int maxRetries = 3;
+            for (int retry = 0; retry <= maxRetries; retry++)
+            {
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                try
+                {
+                    var completion = await client.CompleteChatAsync(history, options, cancellationToken);
+                    stopwatch.Stop();
+                    await LogApiRequestAsync(currentConfig, history, completion, stopwatch.ElapsedMilliseconds, 200);
+                    return completion;
+                }
+                catch (Exception ex)
+                {
+                    stopwatch.Stop();
+                    int statusCode = 500;
+                    if (ex is System.ClientModel.ClientResultException crex)
+                    {
+                        statusCode = crex.Status;
+                    }
+                    await LogApiRequestAsync(currentConfig, history, null, stopwatch.ElapsedMilliseconds, statusCode);
+                    
+                    if (retry < maxRetries && IsRateLimitError(ex))
+                    {
+                        int delaySeconds = (int)Math.Pow(2, retry + 1);
+                        onStatusUpdate($"Rate limited. Retrying in {delaySeconds}s... (attempt {retry + 1}/{maxRetries})");
+                        await Task.Delay(delaySeconds * 1000, cancellationToken);
+                    }
+                    else if (retry == maxRetries || !IsRateLimitError(ex))
+                    {
+                        if (!string.IsNullOrEmpty(currentConfig.FallbackModelId))
+                        {
+                            var fallbackConfig = SettingsManager.ConfiguredModels.FirstOrDefault(m => m.Id == currentConfig.FallbackModelId && m.IsEnabled);
+                            if (fallbackConfig != null)
+                            {
+                                Serilog.Log.Warning(ex, "Primary model {ModelName} failed. Falling back to {FallbackName}", currentConfig.DisplayName, fallbackConfig.DisplayName);
+                                onStatusUpdate($"Model {currentConfig.DisplayName} failed. Falling back to {fallbackConfig.DisplayName}...");
+                                currentConfig = fallbackConfig;
+                                break; // break retry loop to try fallback
+                            }
+                        }
+                        throw; // No fallback or fallback failed
+                    }
+                }
+            }
+        }
+        
+        throw new Exception("No available models to execute the request.");
+    }
+
+    private async Task LogApiRequestAsync(CodingSahayi.Data.ModelEndpointConfig config, List<ChatMessage> history, ChatCompletion completion, long latencyMs, int statusCode)
+    {
+        try
+        {
+            using var db = new CodingSahayi.Data.AppDbContext();
+            string promptContent = "";
+            if (history != null && history.Any())
+            {
+                var lastMsg = history.LastOrDefault(m => m is UserChatMessage);
+                if (lastMsg != null && lastMsg.Content != null && lastMsg.Content.Count > 0)
+                    promptContent = lastMsg.Content[0].Text;
+            }
+
+            var log = new CodingSahayi.Data.ApiRequestLog
+            {
+                Timestamp = DateTime.UtcNow,
+                Feature = "Chat",
+                Provider = config.BaseUrl.Contains("api.openai.com") ? "OpenAI" : (config.Type == CodingSahayi.Data.ModelType.Local ? "Local" : "Cloud"),
+                Model = config.ModelIdentifier,
+                LatencyMs = latencyMs,
+                StatusCode = statusCode,
+                FullPrompt = promptContent,
+                PromptSnippet = promptContent.Length > 100 ? promptContent.Substring(0, 100) + "..." : promptContent
+            };
+
+            if (completion != null)
+            {
+                log.PromptTokens = completion.Usage?.InputTokenCount ?? 0;
+                log.CompletionTokens = completion.Usage?.OutputTokenCount ?? 0;
+                log.TotalTokens = completion.Usage?.TotalTokenCount ?? 0;
+                if (completion.Content != null && completion.Content.Count > 0)
+                {
+                    log.ResponseContent = completion.Content[0].Text;
+                }
+                else if (completion.ToolCalls != null && completion.ToolCalls.Count > 0)
+                {
+                    log.ResponseContent = $"[ToolCall: {completion.ToolCalls[0].FunctionName}]";
+                }
+                
+                if (config.Type != CodingSahayi.Data.ModelType.Local)
+                {
+                    // rough estimate 
+                    log.EstimatedCostUsd = (log.PromptTokens * 0.00000015) + (log.CompletionTokens * 0.00000060);
+                }
+            }
+
+            db.ApiRequestLogs.Add(log);
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Failed to log API request");
         }
     }
 

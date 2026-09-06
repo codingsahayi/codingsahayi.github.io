@@ -74,40 +74,26 @@ public static class SettingsManager
         set => LocalSettings.Values["SoupBaseModel"] = value;
     }
 
-    private static readonly List<string> DefaultModels = new()
-    {
-        "deepseek-ai/deepseek-v4-flash-0731",
-        "meta/llama-3.1-70b-instruct",
-        "anthropic/claude-3.5-sonnet-20240620"
-    };
-
-    public static List<string> AvailableModels
+    public static List<CodingSahayi.Data.ModelEndpointConfig> ConfiguredModels
     {
         get
         {
-            var json = LocalSettings.Values["AvailableModels"] as string;
-            List<string> list = new List<string>(DefaultModels);
+            var json = LocalSettings.Values["ConfiguredModels"] as string;
             if (!string.IsNullOrEmpty(json))
             {
-                try { list = JsonSerializer.Deserialize<List<string>>(json) ?? list; }
+                try { return JsonSerializer.Deserialize<List<CodingSahayi.Data.ModelEndpointConfig>>(json) ?? new List<CodingSahayi.Data.ModelEndpointConfig>(); }
                 catch { }
             }
-            if (!list.Contains("Hybrid Router (Auto)")) list.Insert(0, "Hybrid Router (Auto)");
-            if (!list.Contains("Local Model Only")) list.Insert(1, "Local Model Only");
-            return list;
+            return new List<CodingSahayi.Data.ModelEndpointConfig>
+            {
+                new CodingSahayi.Data.ModelEndpointConfig { DisplayName = "Ollama Local", ModelIdentifier = "gemma4:26b", BaseUrl = "http://localhost:11434/v1", Type = CodingSahayi.Data.ModelType.Local, CostTier = CodingSahayi.Data.CostTier.Local, Priority = 1 },
+                new CodingSahayi.Data.ModelEndpointConfig { DisplayName = "Claude 3.5 Sonnet", ModelIdentifier = "anthropic/claude-3.5-sonnet-20240620", BaseUrl = "https://openrouter.ai/api/v1", Type = CodingSahayi.Data.ModelType.Cloud, CostTier = CodingSahayi.Data.CostTier.Paid, Priority = 2 }
+            };
         }
-        set => LocalSettings.Values["AvailableModels"] = JsonSerializer.Serialize(value);
+        set => LocalSettings.Values["ConfiguredModels"] = JsonSerializer.Serialize(value);
     }
 
-    public static void EnsureModelInList(string modelName)
-    {
-        var models = AvailableModels;
-        if (!models.Contains(modelName, StringComparer.OrdinalIgnoreCase))
-        {
-            models.Add(modelName);
-            AvailableModels = models;
-        }
-    }
+    // EnsureModelInList removed as model config is now object-based
 
     private const string DefaultSystemPrompt = """
 You are an expert native Windows coding agent operating inside a WinUI 3 IDE called Coding Sahayi.

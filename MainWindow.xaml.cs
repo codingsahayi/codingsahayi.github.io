@@ -74,7 +74,12 @@ public sealed partial class MainWindow : Window
         
         WorkspacePathText.Text = _agentManager.WorkspaceDirectory;
         
-        ModelSelector.ItemsSource = SettingsManager.AvailableModels;
+        var modelList = new System.Collections.Generic.List<string> { "Hybrid Router (Auto)" };
+        foreach (var m in SettingsManager.ConfiguredModels.Where(x => x.IsEnabled).OrderBy(x => x.Priority))
+        {
+            modelList.Add($"{m.DisplayName} ({m.CostTier} | P{m.Priority})");
+        }
+        ModelSelector.ItemsSource = modelList;
         ModelSelector.SelectedItem = SettingsManager.ModelName;
         ModelSelector.SelectionChanged += ModelSelector_SelectionChanged;
 
@@ -237,6 +242,18 @@ public sealed partial class MainWindow : Window
     {
         if (args.SelectedItem is NavigationViewItem navItem)
         {
+            if (navItem.Tag?.ToString() == "ApiMetricsPage")
+            {
+                ContentFrame.Visibility = Visibility.Visible;
+                ContentFrame.Navigate(typeof(ApiMetricsPage));
+                return;
+            }
+
+            if (ContentFrame != null)
+            {
+                ContentFrame.Visibility = Visibility.Collapsed;
+            }
+
             CodingSahayi.Data.Project? activeProject = null;
             _activeConversationId = null;
             
@@ -361,6 +378,16 @@ public sealed partial class MainWindow : Window
         
         if (result == ContentDialogResult.Primary)
         {
+            var modelList = new System.Collections.Generic.List<string> { "Hybrid Router (Auto)" };
+            foreach (var m in SettingsManager.ConfiguredModels.Where(x => x.IsEnabled).OrderBy(x => x.Priority))
+            {
+                modelList.Add($"{m.DisplayName} ({m.CostTier} | P{m.Priority})");
+            }
+            ModelSelector.ItemsSource = modelList;
+            if (!modelList.Contains(SettingsManager.ModelName))
+                SettingsManager.ModelName = "Hybrid Router (Auto)";
+            ModelSelector.SelectedItem = SettingsManager.ModelName;
+
             _agentManager.ReinitializeClient();
         }
     }

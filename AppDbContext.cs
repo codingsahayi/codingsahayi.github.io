@@ -11,6 +11,7 @@ namespace CodingSahayi.Data
         public DbSet<ChatMessageEntity> ChatMessages { get; set; } = null!;
         public DbSet<ProjectKnowledge> ProjectKnowledgeBase { get; set; } = null!;
         public DbSet<CodeChunk> CodeChunks { get; set; } = null!;
+        public DbSet<ApiRequestLog> ApiRequestLogs { get; set; } = null!;
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

@@ -1,25 +1,22 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml.Controls;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace CodingSahayi;
 
 public sealed partial class SettingsDialog : ContentDialog
 {
+    private ObservableCollection<CodingSahayi.Data.ModelEndpointConfig> _models;
+    private CodingSahayi.Data.ModelEndpointConfig? _editingModel;
+
     public SettingsDialog()
     {
         this.InitializeComponent();
         
-        ApiKeyBox.Password = SettingsManager.SecureApiKey;
-        EndpointBox.Text = SettingsManager.ApiEndpoint;
-        
-        LocalApiKeyBox.Password = SettingsManager.LocalApiKey;
-        LocalEndpointBox.Text = SettingsManager.LocalApiBaseUrl;
-        LocalModelNameBox.Text = SettingsManager.LocalModelName;
-        
-        // Populate model ComboBox with saved models, select the active one
-        ModelNameBox.ItemsSource = SettingsManager.AvailableModels;
-        ModelNameBox.SelectedItem = SettingsManager.ModelName;
+        _models = new ObservableCollection<CodingSahayi.Data.ModelEndpointConfig>(SettingsManager.ConfiguredModels);
+        ModelsListView.ItemsSource = _models;
         
         SystemPromptBox.Text = SettingsManager.SystemPrompt;
 
@@ -29,24 +26,82 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private void ContentDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
-        SettingsManager.SecureApiKey = ApiKeyBox.Password;
-        SettingsManager.ApiEndpoint = EndpointBox.Text;
-        
-        SettingsManager.LocalApiKey = LocalApiKeyBox.Password;
-        SettingsManager.LocalApiBaseUrl = LocalEndpointBox.Text;
-        SettingsManager.LocalModelName = LocalModelNameBox.Text?.Trim() ?? "local-model";
-        
-        string selectedModel = ModelNameBox.Text?.Trim() ?? "";
-        if (!string.IsNullOrEmpty(selectedModel))
-        {
-            SettingsManager.ModelName = selectedModel;
-            SettingsManager.EnsureModelInList(selectedModel);
-        }
+        SettingsManager.ConfiguredModels = _models.ToList();
         
         SettingsManager.SystemPrompt = SystemPromptBox.Text;
 
         SettingsManager.SoupPath = SoupPathBox.Text?.Trim() ?? @"D:\Soup";
         SettingsManager.SoupBaseModel = SoupBaseModelBox.Text?.Trim() ?? "Qwen/Qwen2.5-Coder-1.5B";
+    }
+
+    private void AddModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        _editingModel = null;
+        EditDisplayName.Text = "";
+        EditModelIdentifier.Text = "";
+        EditBaseUrl.Text = "http://localhost:11434/v1";
+        EditApiKey.Password = "";
+        EditTypeBox.SelectedIndex = 1;
+        EditCostTierBox.SelectedIndex = 2;
+        EditPriority.Value = 1;
+        EditFallbackId.Text = "";
+        
+        ModelEditorPanel.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+    }
+
+    private void EditModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.CommandParameter is CodingSahayi.Data.ModelEndpointConfig model)
+        {
+            _editingModel = model;
+            EditDisplayName.Text = model.DisplayName;
+            EditModelIdentifier.Text = model.ModelIdentifier;
+            EditBaseUrl.Text = model.BaseUrl;
+            EditApiKey.Password = model.ApiKey;
+            EditTypeBox.SelectedIndex = (int)model.Type;
+            EditCostTierBox.SelectedIndex = (int)model.CostTier;
+            EditPriority.Value = model.Priority;
+            EditFallbackId.Text = model.FallbackModelId ?? "";
+            
+            ModelEditorPanel.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+        }
+    }
+
+    private void DeleteModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.CommandParameter is CodingSahayi.Data.ModelEndpointConfig model)
+        {
+            _models.Remove(model);
+        }
+    }
+
+    private void SaveModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        if (_editingModel == null)
+        {
+            _editingModel = new CodingSahayi.Data.ModelEndpointConfig();
+            _models.Add(_editingModel);
+        }
+        
+        _editingModel.DisplayName = EditDisplayName.Text;
+        _editingModel.ModelIdentifier = EditModelIdentifier.Text;
+        _editingModel.BaseUrl = EditBaseUrl.Text;
+        _editingModel.ApiKey = EditApiKey.Password;
+        _editingModel.Type = (CodingSahayi.Data.ModelType)EditTypeBox.SelectedIndex;
+        _editingModel.CostTier = (CodingSahayi.Data.CostTier)EditCostTierBox.SelectedIndex;
+        _editingModel.Priority = (int)EditPriority.Value;
+        _editingModel.FallbackModelId = string.IsNullOrWhiteSpace(EditFallbackId.Text) ? null : EditFallbackId.Text;
+        
+        ModelEditorPanel.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+        
+        // Refresh ListView
+        ModelsListView.ItemsSource = null;
+        ModelsListView.ItemsSource = _models;
+    }
+
+    private void CancelEditModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        ModelEditorPanel.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
     }
 
     private async void StartFineTuningButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -108,4 +163,3 @@ public sealed partial class SettingsDialog : ContentDialog
         }
     }
 }
-

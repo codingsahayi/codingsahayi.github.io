@@ -11,29 +11,74 @@
 
     <ScrollViewer MaxHeight="500">
         <StackPanel Spacing="8" MinWidth="450">
-            <toolkit:SettingsCard Header="API Key" Description="Your NVIDIA NIM or OpenAI token">
-                <PasswordBox x:Name="ApiKeyBox" Width="250" />
-            </toolkit:SettingsCard>
-            
-            <toolkit:SettingsCard Header="API Base URL" Description="The OpenAI-compatible endpoint">
-                <TextBox x:Name="EndpointBox" Width="250" />
-            </toolkit:SettingsCard>
-            
-            <toolkit:SettingsCard Header="Local API Key" Description="API key for your local model (e.g. lm-studio)">
-                <PasswordBox x:Name="LocalApiKeyBox" Width="250" />
-            </toolkit:SettingsCard>
-            
-            <toolkit:SettingsCard Header="Local API Base URL" Description="The local OpenAI-compatible endpoint (e.g. Ollama)">
-                <TextBox x:Name="LocalEndpointBox" Width="250" />
-            </toolkit:SettingsCard>
-            
-            <toolkit:SettingsCard Header="Local Model Name" Description="Model name loaded in LM Studio or Ollama">
-                <TextBox x:Name="LocalModelNameBox" Width="250" />
-            </toolkit:SettingsCard>
-            
-            <toolkit:SettingsCard Header="Model Name" Description="Select or type a model name">
-                <ComboBox x:Name="ModelNameBox" Width="250" IsEditable="True" />
-            </toolkit:SettingsCard>
+            <toolkit:SettingsExpander Header="Model Providers" Description="Configure available models and providers" IsExpanded="True">
+                <toolkit:SettingsExpander.Items>
+                    <toolkit:SettingsCard ContentAlignment="Left">
+                        <StackPanel Spacing="8" HorizontalAlignment="Stretch">
+                            <ListView x:Name="ModelsListView" SelectionMode="None">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Padding="8" ColumnSpacing="8" HorizontalAlignment="Stretch">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding BaseUrl}" FontSize="12" Opacity="0.7" />
+                                            </StackPanel>
+                                            
+                                            <Border Grid.Column="1" Background="#330066FF" CornerRadius="4" Padding="4,2" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="P" FontSize="12" />
+                                                    <TextBlock Text="{Binding Priority}" FontSize="12" />
+                                                </StackPanel>
+                                            </Border>
+                                            
+                                            <Border Grid.Column="2" Background="#33008800" CornerRadius="4" Padding="4,2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding CostTier}" FontSize="12" />
+                                            </Border>
+                                            
+                                            <Button Grid.Column="3" Content="Edit" CommandParameter="{Binding}" Click="EditModel_Click" />
+                                            <Button Grid.Column="4" Content="Delete" CommandParameter="{Binding}" Click="DeleteModel_Click" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                            
+                            <Button Content="＋ Add Model / Provider" Click="AddModel_Click" Margin="0,8,0,0"/>
+                            
+                            <StackPanel x:Name="ModelEditorPanel" Visibility="Collapsed" Spacing="8" Margin="0,16,0,0" Padding="16" CornerRadius="8">
+                                <TextBlock Text="Edit Model" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox x:Name="EditDisplayName" Header="Display Name" />
+                                <TextBox x:Name="EditModelIdentifier" Header="Model Identifier" />
+                                <TextBox x:Name="EditBaseUrl" Header="Base URL" />
+                                <PasswordBox x:Name="EditApiKey" Header="API Key" />
+                                <ComboBox x:Name="EditTypeBox" Header="Type">
+                                    <x:String>Cloud</x:String>
+                                    <x:String>Local</x:String>
+                                </ComboBox>
+                                <ComboBox x:Name="EditCostTierBox" Header="Cost Tier">
+                                    <x:String>Free</x:String>
+                                    <x:String>Paid</x:String>
+                                    <x:String>Local</x:String>
+                                </ComboBox>
+                                <NumberBox x:Name="EditPriority" Header="Priority (lower = higher priority)" Minimum="1" Maximum="100" Value="1" />
+                                <TextBox x:Name="EditFallbackId" Header="Fallback Model ID (optional)" />
+                                
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                    <Button Content="Save" Style="{StaticResource AccentButtonStyle}" Click="SaveModel_Click" />
+                                    <Button Content="Cancel" Click="CancelEditModel_Click" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </toolkit:SettingsCard>
+                </toolkit:SettingsExpander.Items>
+            </toolkit:SettingsExpander>
             
             <toolkit:SettingsExpander Header="System Prompt" Description="Agent rules and operating context" IsExpanded="True">
                 <toolkit:SettingsExpander.Items>
