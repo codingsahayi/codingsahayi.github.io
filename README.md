@@ -89,7 +89,7 @@
 
 1. **Clone the Repository:**
 ```bash
-git clone [https://github.com/your-username/CodingSahayi.git](https://github.com/your-username/CodingSahayi.git)
+git clone [https://github.com/codingsahayi/codingsahayi.github.io.git](https://github.com/codingsahayi/codingsahayi.github.io.git)
 cd CodingSahayi
 
 ```
@@ -126,7 +126,7 @@ dotnet run --project CodingSahayi.csproj
 
 ## 🤝 Contributing
 
-Contributions are welcome! Check out our [Issues](https://www.google.com/search?q=https://github.com/your-username/CodingSahayi/issues) page for open tasks labeled `good first issue` or `help wanted`.
+Contributions are welcome! Check out our [Issues](https://www.google.com/search?q=https://github.com/codingsahayi/codingsahayi.github.io/issues) page for open tasks labeled `good first issue` or `help wanted`.
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
