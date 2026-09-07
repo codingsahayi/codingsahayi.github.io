@@ -1,6 +1,5 @@
 # Coding Sahayi 
 
-[![Buy Me A Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://buymeacoffee.com/muhammedshabeer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 Coding Sahayi is a blazing-fast, native Windows AI coding assistant built with WinUI 3 and C#. It connects directly to the NVIDIA NIM API (or any OpenAI-compatible endpoint) to provide autonomous, agentic "vibe coding" capabilities directly on your desktop—without the overhead of Python or Node.js wrappers.
