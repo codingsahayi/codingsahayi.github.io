@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coding Sahayi — Autonomous AI IDE</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --bg: #07090e;
+      --cyan: #00f0ff;
+      --purple: #8a2be2;
+      --text: #f0f4f8;
+      --muted: #8b949e;
+      --panel: rgba(13, 17, 23, 0.75);
+      --border: rgba(255, 255, 255, 0.1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
+    body { background-color: var(--bg); color: var(--text); overflow-x: hidden; min-height: 100vh; }
+    #canvas-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; }
+    
+    .overlay { position: relative; z-index: 2; display: flex; flex-direction: column; min-height: 100vh; }
+    nav { display: flex; justify-content: space-between; align-items: center; padding: 2rem 4rem; backdrop-filter: blur(10px); }
+    .logo { font-size: 1.5rem; font-weight: 700; letter-spacing: 1px; color: var(--cyan); text-shadow: 0 0 10px rgba(0,240,255,0.4); }
+    .nav-links a { color: var(--muted); text-decoration: none; margin-left: 2rem; transition: color 0.2s; font-size: 0.9rem; }
+    .nav-links a:hover { color: var(--text); }
+    
+    .hero { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 6rem 2rem 4rem; max-width: 900px; margin: 0 auto; }
+    .badge { background: rgba(0, 240, 255, 0.1); border: 1px solid var(--cyan); color: var(--cyan); padding: 0.4rem 1rem; border-radius: 50px; font-size: 0.8rem; margin-bottom: 1.5rem; letter-spacing: 1px; text-transform: uppercase; }
+    h1 { font-size: 3.8rem; line-height: 1.1; margin-bottom: 1.5rem; background: linear-gradient(135deg, #fff 40%, var(--cyan) 80%, var(--purple) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    p.lead { font-size: 1.25rem; color: var(--muted); max-width: 650px; line-height: 1.6; margin-bottom: 2.5rem; }
+    
+    .cta-group { display: flex; gap: 1rem; }
+    .btn-primary { background: var(--cyan); color: #000; padding: 0.9rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 0 20px rgba(0,240,255,0.4); transition: transform 0.2s, box-shadow 0.2s; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(0,240,255,0.6); }
+    .btn-secondary { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 0.9rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600; backdrop-filter: blur(10px); transition: border-color 0.2s; }
+    .btn-secondary:hover { border-color: var(--cyan); }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; max-width: 1200px; margin: 4rem auto; padding: 0 2rem; }
+    .card { background: var(--panel); border: 1px solid var(--border); padding: 2rem; border-radius: 12px; backdrop-filter: blur(12px); transition: transform 0.2s, border-color 0.2s; }
+    .card:hover { transform: translateY(-4px); border-color: rgba(0, 240, 255, 0.4); }
+    .card h3 { color: var(--cyan); margin-bottom: 0.8rem; font-size: 1.2rem; }
+    .card p { color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div class="overlay">
+    <nav>
+      <div class="logo">⚡ CODING SAHAYI</div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#swarm">Architecture</a>
+        <a href="https://github.com" target="_blank">GitHub</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="badge">Next-Gen C# IDE</div>
+      <h1>Autonomous Multi-Agent AI Development</h1>
+      <p class="lead">
+        A privacy-focused desktop IDE engineered in WinUI 3. It orchestrates sub-agent swarms, self-corrects code using live pseudo-terminals, and continuously fine-tunes local models on your hardware.
+      </p>
+      <div class="cta-group">
+        <a href="#features" class="btn-primary">Explore Features</a>
+        <a href="https://github.com" class="btn-secondary">View on GitHub</a>
+      </div>
+    </section>
+
+    <div class="grid" id="features">
+      <div class="card">
+        <h3>🐝 Multi-Agent Swarm</h3>
+        <p>Architect, Worker, Critic, and Scribe sub-agents work asynchronously to plan, write, compile, and document code changes.</p>
+      </div>
+      <div class="card">
+        <h3>🧪 Autonomous PTY Testing</h3>
+        <p>Bidirectional Windows ConPTY terminal runner detects assertion failures and executes autonomous test-driven fixes.</p>
+      </div>
+      <div class="card">
+        <h3>🧠 Low-VRAM Fine-Tuning</h3>
+        <p>Integrates the Soup CLI to fine-tune 7B+ parameter local models via layer streaming directly from your SQLite memory bank.</p>
+      </div>
+      <div class="card">
+        <h3>🛡️ Resilient Hybrid Routing</h3>
+        <p>Run entirely private on local Ollama weights, with seamless automated failover to cloud endpoints when capacity spikes.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 7;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    // Central Core
+    const coreGeo = new THREE.IcosahedronGeometry(2.2, 1);
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.45 });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    scene.add(core);
+
+    // Inner Core
+    const innerGeo = new THREE.OctahedronGeometry(1.2, 0);
+    const innerMat = new THREE.MeshBasicMaterial({ color: 0x8a2be2, wireframe: true, transparent: true, opacity: 0.8 });
+    const inner = new THREE.Mesh(innerGeo, innerMat);
+    scene.add(inner);
+
+    // Surrounding Particle Cloud (The Swarm)
+    const particleCount = 600;
+    const particleGeo = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount * 3; i += 3) {
+      positions[i] = (Math.random() - 0.5) * 16;
+      positions[i + 1] = (Math.random() - 0.5) * 16;
+      positions[i + 2] = (Math.random() - 0.5) * 16;
+    }
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const particleMat = new THREE.PointsMaterial({ color: 0x00f0ff, size: 0.04, transparent: true, opacity: 0.6 });
+    const particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
+
+    // Mouse Interaction
+    let mouseX = 0, mouseY = 0;
+    window.addEventListener('mousemove', (e) => {
+      mouseX = (e.clientX / window.innerWidth - 0.5) * 0.8;
+      mouseY = (e.clientY / window.innerHeight - 0.5) * 0.8;
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      core.rotation.x += 0.002;
+      core.rotation.y += 0.003;
+      inner.rotation.x -= 0.004;
+      inner.rotation.y -= 0.005;
+      particles.rotation.y += 0.0008;
+
+      camera.position.x += (mouseX - camera.position.x) * 0.05;
+      camera.position.y += (-mouseY - camera.position.y) * 0.05;
+      camera.lookAt(scene.position);
+
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
+
+```
