@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml.Controls;
 using System.Collections.ObjectModel;
@@ -10,6 +11,7 @@ public sealed partial class SettingsPage : Page
 {
     private ObservableCollection<CodingSahayi.Data.ModelEndpointConfig> _models;
     private CodingSahayi.Data.ModelEndpointConfig? _editingModel;
+    private CancellationTokenSource? _trainingCts;
 
     public SettingsPage()
     {
@@ -146,60 +148,104 @@ public sealed partial class SettingsPage : Page
 
     private async void StartFineTuningButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
+        // --- Validate configuration paths ---
+        // The Soup repository path must point at a resolvable soup.exe, and the
+        // soup.yaml config must exist (or be generated) before we launch training.
         SettingsManager.SoupPath = SoupPathBox.Text?.Trim() ?? @"D:\Soup";
         SettingsManager.SoupBaseModel = SoupBaseModelBox.Text?.Trim() ?? "Qwen/Qwen2.5-Coder-1.5B";
 
-        // Determine workspace — use LocalApplicationData as a sensible default
-        // when no project is open; the caller can adapt this as needed.
         string workspacePath = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "CodingSahayi", "FineTuning");
 
-        // Disable the button for the duration of the run
-        StartFineTuningButton.IsEnabled = false;
-        FineTuneStatusText.Text = string.Empty;
+        // Prepare artifacts (dataset + soup.yaml) and resolve the Soup executable.
+        var (prepOk, exePath, configPath, prepMsg) =
+            await ModelTrainerTool.PreparePipelineAsync(workspacePath, new Progress<string>(s =>
+                DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = s)));
 
-        // IProgress<T> marshals Report() calls back to the UI thread via DispatcherQueue
-        var progress = new Progress<string>(message =>
+        if (!prepOk)
         {
             DispatcherQueue.TryEnqueue(() =>
             {
-                FineTuneStatusText.Text = string.IsNullOrEmpty(FineTuneStatusText.Text)
-                    ? message
-                    : FineTuneStatusText.Text + "\n" + message;
+                TrainingStatusLabel.Text = "Status: Error";
+                TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 232, 17, 35));
+                FineTuneStatusText.Text = prepMsg;
             });
-        });
+            return;
+        }
 
-        try
+        // --- Set UI to active/loading state ---
+        _trainingCts = new CancellationTokenSource();
+        var token = _trainingCts.Token;
+
+        StartFineTuningButton.IsEnabled = false;
+        CancelFineTuningButton.IsEnabled = true;
+        TrainingProgressRing.IsActive = true;
+        TrainingStatusLabel.Text = "Status: Training active (streaming layers)...";
+        TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 166, 227, 161));
+        FineTuneStatusText.Text = string.Empty;
+        SoupOutputTerminal.Text = string.Empty;
+
+        // Real-time log callback — marshals every line onto the UI thread and
+        // auto-scrolls the embedded console. Step/loss lines update the status header.
+        Action<string> logCallback = (line) =>
         {
-            TrainingResult result = await Task.Run(() =>
-                ModelTrainerTool.RunSoupTrainingAsync(workspacePath, progress));
-
-            // Surface final metrics summary
             DispatcherQueue.TryEnqueue(() =>
             {
-                if (result.Metrics.Count > 0)
+                SoupOutputTerminal.Text += line + "\n";
+                SoupLogScrollViewer.ChangeView(null, SoupLogScrollViewer.ScrollableHeight, null);
+
+                if (line.Contains("Step ") || line.Contains("loss:") || line.Contains("loss="))
                 {
-                    FineTuneStatusText.Text +=
-                        $"\n\n📈 Loss curve ({result.Metrics.Count} points):";
-                    foreach (var m in result.Metrics)
-                        FineTuneStatusText.Text += $"\n  step {m.Step,6}: {m.Loss:F4}";
+                    TrainingStatusLabel.Text = $"Status: {line.Trim()}";
                 }
             });
+        };
+
+        bool success;
+        try
+        {
+            success = await ModelTrainerTool.RunSoupTrainingAsync(
+                exePath, configPath, logCallback, token);
         }
         catch (Exception ex)
         {
             DispatcherQueue.TryEnqueue(() =>
             {
-                FineTuneStatusText.Text += $"\n❌ Unexpected error: {ex.Message}";
+                SoupOutputTerminal.Text += $"\n❌ Unexpected error: {ex.Message}";
             });
+            success = false;
         }
-        finally
+
+        // --- Reset UI state ---
+        DispatcherQueue.TryEnqueue(() =>
         {
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                StartFineTuningButton.IsEnabled = true;
-            });
-        }
+            TrainingProgressRing.IsActive = false;
+            CancelFineTuningButton.IsEnabled = false;
+            StartFineTuningButton.IsEnabled = true;
+            TrainingStatusLabel.Text = success ? "Status: Complete" : "Status: Stopped";
+            TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 145, 163, 176));
+
+            if (success)
+                FineTuneStatusText.Text = "✅ Training finished successfully.";
+            else
+                FineTuneStatusText.Text = "⛔ Training finished with errors or was cancelled. See console above.";
+        });
+
+        _trainingCts?.Dispose();
+        _trainingCts = null;
+    }
+
+    private void CancelFineTuningButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        _trainingCts?.Cancel();
+        SoupOutputTerminal.Text += "\n[TRAINING ABORTED BY USER]\n";
+        TrainingStatusLabel.Text = "Status: Cancelling...";
+    }
+
+    private void ClearLogsButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        SoupOutputTerminal.Text = string.Empty;
+        TrainingStatusLabel.Text = "Status: Idle";
     }
 }

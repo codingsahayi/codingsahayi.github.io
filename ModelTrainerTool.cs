@@ -1,33 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CodingSahayi;
 
-/// <summary>
-/// Result returned by <see cref="ModelTrainerTool.RunSoupTrainingAsync"/>.
-/// </summary>
-public sealed class TrainingResult
-{
-    /// <summary>Human-readable summary of how the run finished.</summary>
-    public string ExitMessage { get; init; } = string.Empty;
-
-    /// <summary>Path of the JSONL dataset file that was used for training.</summary>
-    public string DatasetPath { get; init; } = string.Empty;
-
-    /// <summary>Path of the generated <c>soup.yaml</c> config file.</summary>
-    public string ConfigPath { get; init; } = string.Empty;
-
-    /// <summary>Training loss values extracted from the PTY output, in order.</summary>
-    public IReadOnlyList<TrainingMetric> Metrics { get; init; } = Array.Empty<TrainingMetric>();
-
-    /// <summary>Full raw PTY output from the <c>soup train</c> process.</summary>
-    public string RawOutput { get; init; } = string.Empty;
-}
-
-/// <summary>A single loss measurement captured during training.</summary>
+/// <summary>Loss value captured during training.</summary>
 public sealed class TrainingMetric
 {
     public int    Step  { get; init; }
@@ -35,11 +17,14 @@ public sealed class TrainingMetric
 }
 
 /// <summary>
-/// Orchestrates the full fine-tuning pipeline:
-/// dataset export → soup.yaml generation → <c>soup train</c> execution → metric parsing.
+/// Orchestrates the Soup LoRA fine-tuning pipeline:
+/// dataset export → soup.yaml generation → <c>soup train</c> execution (live streaming) → metric parsing.
 /// </summary>
 public static class ModelTrainerTool
 {
+    // ANSI/VT escape-sequence scrubber so control codes don't render as garbage in the WinUI console.
+    private static readonly Regex AnsiRegex = new(@"\x1B\[[^@-~]*[=@-~]", RegexOptions.Compiled);
+
     // Matches lines like:
     //   step=10  loss=0.8423
     //   {'loss': 0.8423, 'step': 10}
@@ -49,27 +34,158 @@ public static class ModelTrainerTool
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// <summary>
-    /// Runs the complete fine-tuning pipeline for the given workspace.
+    /// Runs <c>soup train --config &lt;configPath&gt;</c> as a live-streaming process.
+    /// Every sanitized output line (stdout + stderr) is forwarded through <paramref name="onOutputLine"/>,
+    /// which the caller marshals to its UI thread. The process tree is terminated on cancellation
+    /// via <c>taskkill /T /F</c> so lingering Python/CUDA workers don't pin GPU VRAM.
     /// </summary>
-    /// <param name="workspacePath">
-    /// Directory used as the training root.  The <c>.soup/</c> subdirectory will be
-    /// created here to hold the dataset, config, and adapter output.
-    /// </param>
-    /// <param name="progress">
-    /// Optional progress sink that receives human-readable status lines as the
-    /// pipeline advances (safe to marshal to the UI thread).
-    /// </param>
-    /// <returns>A <see cref="TrainingResult"/> describing the completed run.</returns>
-    public static async Task<TrainingResult> RunSoupTrainingAsync(
-        string workspacePath,
-        IProgress<string>? progress = null)
+    /// <param name="soupExePath">Absolute path to the <c>soup.exe</c> executable (or a <c>python</c> wrapper).</param>
+    /// <param name="configPath">Absolute path to the generated <c>soup.yaml</c>.</param>
+    /// <param name="onOutputLine">Callback invoked for each line emitted by the process (already ANSI-scrubbed).</param>
+    /// <param name="ct">Cancellation token; cancelling kills the child process tree.</param>
+    /// <returns><c>true</c> if the process exited with code 0, otherwise <c>false</c>.</returns>
+    public static async Task<bool> RunSoupTrainingAsync(
+        string soupExePath,
+        string configPath,
+        Action<string>? onOutputLine,
+        CancellationToken ct = default)
     {
-        // ── Step 1: Export knowledge base to JSONL ────────────────────────────
-        progress?.Report("📦 Exporting ProjectKnowledge to JSONL dataset…");
+        if (string.IsNullOrWhiteSpace(soupExePath))
+            throw new ArgumentException("Soup executable path is required.", nameof(soupExePath));
+        if (string.IsNullOrWhiteSpace(configPath))
+            throw new ArgumentException("soup.yaml config path is required.", nameof(configPath));
 
+        var psi = new ProcessStartInfo
+        {
+            FileName = soupExePath,
+            Arguments = $"train --config \"{configPath}\"",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            WorkingDirectory = Path.GetDirectoryName(configPath) ?? AppContext.BaseDirectory
+        };
+
+        var rawBuffer = new StringBuilder();      // full raw (scrubbed) output for metric parsing
+        var outputLock = new object();
+        var exitTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+
+        void HandleLine(string line)
+        {
+            if (string.IsNullOrEmpty(line)) return;
+            string clean = AnsiRegex.Replace(line, "");
+            lock (outputLock) rawBuffer.AppendLine(clean);
+            onOutputLine?.Invoke(clean);   // already sanitized
+        }
+
+        process.OutputDataReceived += (s, e) => { if (e.Data != null) HandleLine(e.Data); };
+        process.ErrorDataReceived  += (s, e) => { if (e.Data != null) HandleLine(e.Data); };
+        process.Exited             += (s, e) => exitTcs.TrySetResult(process.ExitCode);
+
+        try
+        {
+            if (!process.Start())
+                throw new InvalidOperationException($"Failed to start process: {soupExePath}");
+        }
+        catch (Exception ex)
+        {
+            onOutputLine?.Invoke($"❌ Failed to start soup.exe ({soupExePath}): {ex.Message}");
+            return false;
+        }
+
+        // Begin async stream reads BEFORE the process can flood the pipe buffers (deadlock risk otherwise).
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        // Register cancellation → kill the whole process tree (python + CUDA children).
+        using var reg = ct.Register(() =>
+        {
+            try { process.Kill(true); }                    // .NET 5+: kills the process tree directly
+            catch { /* already exited */ }
+            if (!process.HasExited)
+            {
+                try
+                {
+                    var pi = new ProcessStartInfo
+                    {
+                        FileName = "taskkill",
+                        Arguments = $"/PID {process.Id} /T /F",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    using var kill = Process.Start(pi);
+                    kill?.WaitForExit(5000);
+                }
+                catch { /* best-effort */ }
+                exitTcs.TrySetResult(-1);
+            }
+        });
+
+        onOutputLine?.Invoke($"▶ Starting: {soupExePath} train --config \"{configPath}\"");
+
+        int exitCode;
+        try
+        {
+            // Wait for exit but respect cancellation via WhenAny so we can react to ct immediately.
+            var exitTask = exitTcs.Task;
+            var completed = await Task.WhenAny(exitTask, Task.Delay(Timeout.Infinite, ct)).ConfigureAwait(false);
+            if (completed == exitTask)
+            {
+                exitCode = await exitTask.ConfigureAwait(false);
+            }
+            else
+            {
+                // ct fired before process exited → teardown handled in the registration callback.
+                onOutputLine?.Invoke("⏹ Training cancelled.");
+                exitCode = -1;
+                try { process.Kill(true); } catch { }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            onOutputLine?.Invoke("⏹ Training cancelled.");
+            exitCode = -1;
+        }
+        finally
+        {
+            // Drain any residual buffered output and dispose the registration.
+            try { if (!process.HasExited) process.Kill(true); } catch { }
+            reg.Dispose();
+        }
+
+        // Parse loss metrics from the aggregated raw output.
+        var metrics = ParseMetrics(rawBuffer.ToString());
+
+        if (exitCode == 0)
+        {
+            onOutputLine?.Invoke($"✅ Training complete. Captured {metrics.Count} loss data-points.");
+            return true;
+        }
+
+        if (exitCode == -1)
+            onOutputLine?.Invoke("⚠ Training was aborted (cancellation).");
+        else
+            onOutputLine?.Invoke($"❌ soup train exited with code {exitCode}. Captured {metrics.Count} loss data-points.");
+        return false;
+    }
+
+    /// <summary>
+    /// Prepares the fine-tuning pipeline artifacts for <paramref name="workspacePath"/>:
+    /// exports the ProjectKnowledge DB to JSONL, generates <c>soup.yaml</c>, and resolves the
+    /// Soup executable path. Returns the resolved (exePath, configPath) on success.
+    /// </summary>
+    public static async Task<(bool ok, string exePath, string configPath, string message)> PreparePipelineAsync(
+        string workspacePath,
+        IProgress<string>? progress)
+    {
         var soupDir     = Path.Combine(workspacePath, ".soup");
         var datasetPath = Path.Combine(soupDir, "dataset.jsonl");
 
+        progress?.Report("📦 Exporting ProjectKnowledge to JSONL dataset…");
         int recordCount;
         try
         {
@@ -79,21 +195,18 @@ public static class ModelTrainerTool
         {
             var msg = $"❌ Dataset export failed: {ex.Message}";
             progress?.Report(msg);
-            return new TrainingResult { ExitMessage = msg };
+            return (false, "", "", msg);
         }
 
         if (recordCount == 0)
         {
             var msg = "⚠️ No ProjectKnowledge entries found. Train the agent on some tasks first.";
             progress?.Report(msg);
-            return new TrainingResult { ExitMessage = msg, DatasetPath = datasetPath };
+            return (false, "", "", msg);
         }
-
         progress?.Report($"✅ Exported {recordCount} records → {datasetPath}");
 
-        // ── Step 2: Generate soup.yaml ────────────────────────────────────────
         progress?.Report("⚙️  Generating soup.yaml LoRA config…");
-
         string configPath;
         try
         {
@@ -103,79 +216,39 @@ public static class ModelTrainerTool
         {
             var msg = $"❌ Config generation failed: {ex.Message}";
             progress?.Report(msg);
-            return new TrainingResult { ExitMessage = msg, DatasetPath = datasetPath };
+            return (false, "", "", msg);
         }
-
+        if (!File.Exists(configPath))
+        {
+            var msg = $"❌ Generated config not found: {configPath}";
+            progress?.Report(msg);
+            return (false, "", "", msg);
+        }
         progress?.Report($"✅ Config written → {configPath}");
 
-        // ── Step 3: Execute `soup train` via PTY ──────────────────────────────
-        var (app, arguments, runDir) = ResolveSoupInvocation(configPath, workspacePath);
-        progress?.Report($"🔍 Soup executable: {app}");
-        progress?.Report($"📁 Working directory: {runDir}");
-        progress?.Report($"🚀 Launching `soup train` — this may take a long time…");
-
-        // 4-hour timeout to accommodate large datasets on slow hardware
-        const int TimeoutSeconds = 4 * 60 * 60;
-
-        string rawOutput;
-        try
+        var (app, _, defaultWorkDir) = ResolveSoupInvocation(configPath, workspacePath);
+        if (string.IsNullOrWhiteSpace(app) || app == "soup")
         {
-            rawOutput = await PtyManager.ExecuteCommandAsync(
-                app:              app,
-                arguments:        arguments,
-                workingDirectory: runDir,
-                timeoutSeconds:   TimeoutSeconds);
-        }
-        catch (Exception ex)
-        {
-            var msg = $"❌ soup train failed to start: {ex.Message}";
+            var msg = "❌ Could not locate a soup.exe. Verify the Soup repository path or install Soup into PATH.";
             progress?.Report(msg);
-            return new TrainingResult
-            {
-                ExitMessage = msg,
-                DatasetPath = datasetPath,
-                ConfigPath  = configPath
-            };
+            return (false, "", "", msg);
         }
+        progress?.Report($"🔍 Soup executable: {app}");
 
-        // ── Step 4: Parse loss metrics from PTY stream ────────────────────────
-        progress?.Report("📊 Parsing training metrics…");
-
-        var metrics = ParseMetrics(rawOutput);
-
-        string exitMessage = rawOutput.Contains("Error", StringComparison.OrdinalIgnoreCase)
-                          || rawOutput.Contains("Traceback", StringComparison.OrdinalIgnoreCase)
-            ? $"⚠️ Training finished with errors. Captured {metrics.Count} loss data-points."
-            : $"✅ Training complete. Captured {metrics.Count} loss data-points.";
-
-        if (metrics.Count > 0)
-        {
-            var last = metrics[^1];
-            exitMessage += $" Final loss @ step {last.Step}: {last.Loss:F4}";
-        }
-
-        progress?.Report(exitMessage);
-
-        return new TrainingResult
-        {
-            ExitMessage = exitMessage,
-            DatasetPath = datasetPath,
-            ConfigPath  = configPath,
-            Metrics     = metrics,
-            RawOutput   = rawOutput
-        };
+        // If we resolved a python wrapper in the repo, the working dir shifts to the repo root.
+        var runDir = Path.GetDirectoryName(app) ?? defaultWorkDir;
+        return (true, app, configPath, "");
     }
 
     /// <summary>
-    /// Resolves the app and arguments to execute soup train, prioritizing
-    /// the configured Soup repository (e.g. D:\Soup), its virtual environment,
-    /// Python Scripts, or system PATH.
+    /// Resolves the Soup executable, prioritizing the configured Soup repository, its
+    /// virtual environments, Python scripts, PATH, or the repo's python module.
     /// </summary>
     public static (string App, string Arguments, string WorkingDir) ResolveSoupInvocation(string configPath, string defaultWorkingDir)
     {
         string soupRepo = SettingsManager.SoupPath;
 
-        // 1. Check for soup.exe inside repository venvs (.venv / venv)
+        // 1. soup.exe inside the repository venvs
         if (!string.IsNullOrWhiteSpace(soupRepo) && Directory.Exists(soupRepo))
         {
             string venvSoup = Path.Combine(soupRepo, ".venv", "Scripts", "soup.exe");
@@ -187,13 +260,13 @@ public static class ModelTrainerTool
                 return (envSoup, $"train --config \"{configPath}\"", defaultWorkingDir);
         }
 
-        // 2. Check standard Python user Scripts directory
+        // 2. Standard Python user Scripts directory
         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         string userPythonScript = Path.Combine(localAppData, "Programs", "Python", "Python312", "Scripts", "soup.exe");
         if (File.Exists(userPythonScript))
             return (userPythonScript, $"train --config \"{configPath}\"", defaultWorkingDir);
 
-        // 3. Check if soup.exe is in PATH
+        // 3. PATH
         string? pathEnv = Environment.GetEnvironmentVariable("PATH");
         if (pathEnv != null)
         {
@@ -205,7 +278,7 @@ public static class ModelTrainerTool
             }
         }
 
-        // 4. If cloned repo exists with src/soup_cli, run via python module
+        // 4. Cloned repo with src/soup_cli → run via python module
         if (!string.IsNullOrWhiteSpace(soupRepo) && Directory.Exists(Path.Combine(soupRepo, "src", "soup_cli")))
         {
             string pythonExe = Path.Combine(localAppData, "Programs", "Python", "Python312", "python.exe");
@@ -213,13 +286,13 @@ public static class ModelTrainerTool
             return (pythonExe, $"-m soup_cli.cli train --config \"{configPath}\"", soupRepo);
         }
 
-        // 5. Default fallback
+        // 5. Default fallback (caller validates; treated as unresolved when app == "soup")
         return ("soup", $"train --config \"{configPath}\"", defaultWorkingDir);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private static List<TrainingMetric> ParseMetrics(string rawOutput)
+    public static List<TrainingMetric> ParseMetrics(string rawOutput)
     {
         var metrics = new List<TrainingMetric>();
         int autoStep = 0;

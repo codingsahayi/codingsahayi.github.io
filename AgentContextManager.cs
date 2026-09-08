@@ -581,14 +581,18 @@ public class AgentContextManager
                         statusCode = crex.Status;
                     }
                     await LogApiRequestAsync(currentConfig, history, null, stopwatch.ElapsedMilliseconds, statusCode);
-                    
-                    if (retry < maxRetries && IsRateLimitError(ex))
+
+                    // Honor the provider's AllowFallback setting: if fallback is disabled
+                    // for this config, never route a retry or fallback through it.
+                    if (!currentConfig.AllowFallback) throw;
+
+                    if (retry < maxRetries && IsTransientError(statusCode, ex))
                     {
                         int delaySeconds = (int)Math.Pow(2, retry + 1);
-                        onStatusUpdate($"Rate limited. Retrying in {delaySeconds}s... (attempt {retry + 1}/{maxRetries})");
+                        onStatusUpdate($"Rate limited / transient error. Retrying in {delaySeconds}s... (attempt {retry + 1}/{maxRetries})");
                         await Task.Delay(delaySeconds * 1000, cancellationToken);
                     }
-                    else if (retry == maxRetries || !IsRateLimitError(ex))
+                    else if (retry == maxRetries || !IsTransientError(statusCode, ex))
                     {
                         if (!string.IsNullOrEmpty(currentConfig.FallbackModelId))
                         {
@@ -701,7 +705,9 @@ public class AgentContextManager
 
                     string oldText = System.IO.File.Exists(wFilePath) ? System.IO.File.ReadAllText(wFilePath) : "";
                     
-                    var diff = DiffManager.GenerateDiff(oldText, newText);
+                    // Offload the diff computation off the UI thread to avoid stalling the
+                    // dispatcher on large files. The dialog itself is shown on the UI thread.
+                    var diff = await Task.Run(() => DiffManager.GenerateDiff(oldText, newText));
                     var tcs = new TaskCompletionSource<bool>();
                     
                     var dispatcher = (Microsoft.UI.Xaml.Application.Current as App)?._window?.DispatcherQueue;
@@ -794,13 +800,31 @@ public class AgentContextManager
                 case "train_local_model":
                     string targetWorkspace = !string.IsNullOrWhiteSpace(WorkspaceDirectory) ? WorkspaceDirectory :
                         System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodingSahayi", "FineTuning");
-                    var trainRes = await ModelTrainerTool.RunSoupTrainingAsync(targetWorkspace);
-                    toolResult = trainRes.ExitMessage;
-                    if (trainRes.Metrics.Count > 0)
+
+                    // Prepare artifacts (dataset + soup.yaml) and resolve the Soup executable.
+                    var (prepOk, exePath, configPath, prepMsg) =
+                        await ModelTrainerTool.PreparePipelineAsync(targetWorkspace, null);
+
+                    if (!prepOk)
                     {
-                        toolResult += $"\nMetrics: {trainRes.Metrics.Count} loss checkpoints recorded. Final loss: {trainRes.Metrics[^1].Loss:F4}";
+                        toolResult = prepMsg;
+                        success = false;
+                        break;
                     }
-                    if (toolResult.Contains("failed", StringComparison.OrdinalIgnoreCase) || toolResult.StartsWith("❌"))
+
+                    var trainBuffer = new System.Text.StringBuilder();
+                    bool trainOk = await ModelTrainerTool.RunSoupTrainingAsync(
+                        exePath,
+                        configPath,
+                        line => trainBuffer.AppendLine(line));
+
+                    var metrics = ModelTrainerTool.ParseMetrics(trainBuffer.ToString());
+                    toolResult = trainOk
+                        ? $"✅ Training complete. Captured {metrics.Count} loss data-points."
+                        : $"❌ Training failed. Captured {metrics.Count} loss data-points.";
+                    if (metrics.Count > 0)
+                        toolResult += $" Final loss @ step {metrics[^1].Step}: {metrics[^1].Loss:F4}";
+                    if (!trainOk)
                         success = false;
                     break;
                 default:
@@ -854,14 +878,26 @@ public class AgentContextManager
         }
     }
 
-    private static bool IsRateLimitError(Exception ex)
+    private static bool IsTransientError(int statusCode, Exception ex)
     {
+        // Prefer the structured HTTP status when available (ClientResultException).
+        if (statusCode != 0)
+        {
+            // 429 Too Many Requests, 529 Overloaded, and transient 5xx (500-504) are retryable.
+            if (statusCode is 429 or 529) return true;
+            if (statusCode >= 500 && statusCode <= 504) return true;
+            return false;
+        }
+
+        // Fallback: string-match the exception message when no status code is available.
         var message = ex.Message ?? "";
-        // Check for HTTP status codes 429 (Too Many Requests) or 529 (Overloaded)
-        return message.Contains("429") || message.Contains("529") 
+        return message.Contains("429")
+            || message.Contains("529")
             || message.Contains("Too Many Requests", StringComparison.OrdinalIgnoreCase)
             || message.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("overloaded", StringComparison.OrdinalIgnoreCase);
+            || message.Contains("overloaded", StringComparison.OrdinalIgnoreCase)
+            || (message.Contains("500") || message.Contains("502")
+                || message.Contains("503") || message.Contains("504"));
     }
 
     private string ResolvePath(string path)

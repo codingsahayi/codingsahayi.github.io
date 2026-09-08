@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodingSahayi.Data
@@ -18,7 +19,7 @@ namespace CodingSahayi.Data
             var folder = Environment.SpecialFolder.LocalApplicationData;
             var path = Environment.GetFolderPath(folder);
             var dbPath = Path.Join(path, "CodingSahayi", "coding_sahayi.db");
-            
+
             // Ensure directory exists
             var directory = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -26,7 +27,25 @@ namespace CodingSahayi.Data
                 Directory.CreateDirectory(directory);
             }
 
-            optionsBuilder.UseSqlite($"Data Source={dbPath}");
+            // Cache=Shared + Default Timeout reduce SQLITE_BUSY under concurrent access
+            // (agent loop writes logs/knowledge while the UI thread reads).
+            var connectionString = $"Data Source={dbPath};Cache=Shared;Default Timeout=5";
+
+            var connection = new SqliteConnection(connectionString);
+
+            // Enable Write-Ahead Logging the first time the connection opens so that
+            // concurrent readers are not blocked while a write transaction is in progress.
+            connection.StateChange += (sender, e) =>
+            {
+                if (e.CurrentState == System.Data.ConnectionState.Open)
+                {
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = "PRAGMA journal_mode=WAL;";
+                    cmd.ExecuteNonQuery();
+                }
+            };
+
+            optionsBuilder.UseSqlite(connection);
         }
     }
 }

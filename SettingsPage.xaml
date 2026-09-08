@@ -191,11 +191,64 @@
                     <toolkit:SettingsCard ContentAlignment="Left">
                         <StackPanel Spacing="12">
                             <TextBlock TextWrapping="Wrap" Opacity="0.7"
-                                       Text="Exports your ProjectKnowledge entries to a JSONL dataset, generates a soup.yaml LoRA config (with layer streaming enabled), and runs 'soup train' in a PTY terminal using the cloned Soup repo." />
-                            <Button x:Name="StartFineTuningButton"
-                                    Content="▶  Start Fine-Tuning"
-                                    Style="{StaticResource AccentButtonStyle}"
-                                    Click="StartFineTuningButton_Click" />
+                                       Text="Exports your ProjectKnowledge entries to a JSONL dataset, generates a soup.yaml LoRA config (with layer streaming enabled), and runs 'soup train' streaming live output to the console below." />
+
+                            <!-- Execution controls -->
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Button x:Name="StartFineTuningButton"
+                                        Content="▶  Start Fine-Tuning"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        Click="StartFineTuningButton_Click" />
+                                <Button x:Name="CancelFineTuningButton"
+                                        Content="Stop Training"
+                                        IsEnabled="False"
+                                        Click="CancelFineTuningButton_Click">
+                                    <Button.Resources>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Foreground" Value="#E81123" />
+                                            <Setter Property="BorderBrush" Value="#E81123" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                        </Style>
+                                    </Button.Resources>
+                                </Button>
+                                <Button x:Name="ClearLogsButton"
+                                        Content="Clear Output"
+                                        Click="ClearLogsButton_Click" />
+                                <ProgressRing x:Name="TrainingProgressRing"
+                                              IsActive="False"
+                                              Width="20"
+                                              Height="20"
+                                              Margin="10,0,0,0" />
+                                <TextBlock x:Name="TrainingStatusLabel"
+                                           Text="Status: Idle"
+                                           Foreground="#91a3b0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <!-- Live execution console -->
+                            <Border Background="#05080c"
+                                    BorderBrush="#1a2636"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    MinHeight="240"
+                                    MaxHeight="360">
+                                <ScrollViewer x:Name="SoupLogScrollViewer"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Auto"
+                                              Padding="12">
+                                    <TextBox x:Name="SoupOutputTerminal"
+                                             Text=""
+                                             IsReadOnly="True"
+                                             AcceptsReturn="True"
+                                             TextWrapping="Wrap"
+                                             BorderThickness="0"
+                                             Background="Transparent"
+                                             Foreground="#a6e3a1"
+                                             FontFamily="Cascadia Mono, Consolas"
+                                             FontSize="12" />
+                                </ScrollViewer>
+                            </Border>
+
                             <TextBlock x:Name="FineTuneStatusText"
                                        TextWrapping="Wrap"
                                        FontFamily="Consolas"

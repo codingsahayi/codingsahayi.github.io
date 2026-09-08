@@ -19,11 +19,15 @@ public sealed partial class DiffReviewDialog : ContentDialog
 
     private void Accept_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        // Chunk acceptance logic would go here
+        // Accept the diff and close the dialog.
+        IsAccepted = true;
+        Hide();
     }
 
     private void Reject_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        // Chunk rejection logic would go here
+        // Reject the diff and close the dialog.
+        IsAccepted = false;
+        Hide();
     }
 }
