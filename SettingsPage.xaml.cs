@@ -154,25 +154,99 @@ public sealed partial class SettingsPage : Page
         SettingsManager.SoupPath = SoupPathBox.Text?.Trim() ?? @"D:\Soup";
         SettingsManager.SoupBaseModel = SoupBaseModelBox.Text?.Trim() ?? "Qwen/Qwen2.5-Coder-1.5B";
 
+        // The training workspace lives under %LocalAppData%\CodingSahayi\FineTuning.
         string workspacePath = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "CodingSahayi", "FineTuning");
 
-        // Prepare artifacts (dataset + soup.yaml) and resolve the Soup executable.
-        var (prepOk, exePath, configPath, prepMsg) =
-            await ModelTrainerTool.PreparePipelineAsync(workspacePath, new Progress<string>(s =>
-                DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = s)));
+        // Explicitly create the .soup sub-directory before writing any artifacts, so
+        // the config / dataset writes and the pre-spawn File.Exists check never fail
+        // on a missing directory.
+        var soupDir = System.IO.Path.Combine(workspacePath, ".soup");
+        if (!System.IO.Directory.Exists(soupDir))
+            System.IO.Directory.CreateDirectory(soupDir);
 
-        if (!prepOk)
+        var datasetPath = System.IO.Path.Combine(soupDir, "dataset.jsonl");
+        var configPath  = System.IO.Path.Combine(soupDir, "soup.yaml");
+
+        // 1. Export the ProjectKnowledge database to JSONL (creates the dataset file).
+        DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = "📦 Exporting ProjectKnowledge to JSONL dataset…");
+        int recordCount;
+        try
+        {
+            recordCount = await DatasetExporter.ExportAsync(datasetPath);
+        }
+        catch (Exception ex)
         {
             DispatcherQueue.TryEnqueue(() =>
             {
                 TrainingStatusLabel.Text = "Status: Error";
                 TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 232, 17, 35));
-                FineTuneStatusText.Text = prepMsg;
+                SoupOutputTerminal.Text += $"❌ Dataset export failed: {ex.Message}\n";
+                FineTuneStatusText.Text = $"❌ Dataset export failed: {ex.Message}";
             });
             return;
         }
+
+        if (recordCount == 0)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                TrainingStatusLabel.Text = "Status: Error";
+                TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 232, 17, 35));
+                SoupOutputTerminal.Text += "⚠️ No ProjectKnowledge entries found. Train the agent on some tasks first.\n";
+                FineTuneStatusText.Text = "⚠️ No ProjectKnowledge entries found. Train the agent on some tasks first.";
+            });
+            return;
+        }
+        DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = $"✅ Exported {recordCount} records → {datasetPath}");
+
+        // 2. Write soup.yaml (creates the config file on disk).
+        DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = "⚙️  Writing soup.yaml LoRA config…");
+        try
+        {
+            await SoupConfigManager.WriteConfigFileAsync(configPath, workspacePath, datasetPath);
+        }
+        catch (Exception ex)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                TrainingStatusLabel.Text = "Status: Error";
+                TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 232, 17, 35));
+                SoupOutputTerminal.Text += $"❌ Config generation failed: {ex.Message}\n";
+                FineTuneStatusText.Text = $"❌ Config generation failed: {ex.Message}";
+            });
+            return;
+        }
+
+        // 3. Resolve the Soup executable to spawn.
+        var (soupExe, _, _) = ModelTrainerTool.ResolveSoupInvocation(configPath, workspacePath);
+        if (string.IsNullOrWhiteSpace(soupExe) || soupExe == "soup")
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                TrainingStatusLabel.Text = "Status: Error";
+                TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 232, 17, 35));
+                SoupOutputTerminal.Text += "❌ Could not locate a soup.exe. Verify the Soup repository path or install Soup into PATH.\n";
+                FineTuneStatusText.Text = "❌ Could not locate a soup.exe. Verify the Soup repository path or install Soup into PATH.";
+            });
+            return;
+        }
+
+        // 4. Pre-spawn guard: abort with a console error if soup.yaml is still missing.
+        if (!System.IO.File.Exists(configPath))
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                TrainingStatusLabel.Text = "Status: Error";
+                TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 232, 17, 35));
+                SoupOutputTerminal.Text += $"❌ Config not found: {configPath}\n⛔ Aborting: soup.yaml is missing.\n";
+                FineTuneStatusText.Text = $"❌ Config not found: {configPath}";
+            });
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = $"✅ Config written → {configPath}");
 
         // --- Set UI to active/loading state ---
         _trainingCts = new CancellationTokenSource();
@@ -206,7 +280,7 @@ public sealed partial class SettingsPage : Page
         try
         {
             success = await ModelTrainerTool.RunSoupTrainingAsync(
-                exePath, configPath, logCallback, token);
+                soupExe, configPath, logCallback, token, workspacePath);
         }
         catch (Exception ex)
         {

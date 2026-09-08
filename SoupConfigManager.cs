@@ -21,10 +21,26 @@ public static class SoupConfigManager
     public static async Task<string> GenerateSoupYaml(string workspacePath, string datasetPath)
     {
         var soupDir = Path.Combine(workspacePath, ".soup");
-        if (!Directory.Exists(soupDir))
-            Directory.CreateDirectory(soupDir);
-
         var yamlPath = Path.Combine(soupDir, "soup.yaml");
+        await WriteConfigFileAsync(yamlPath, workspacePath, datasetPath);
+        return yamlPath;
+    }
+
+    /// <summary>
+    /// Explicitly ensures the target directory exists, then writes the <c>soup.yaml</c>
+    /// LoRA configuration to <paramref name="configPath"/>. The directory is created
+    /// up-front so the subsequent file-write and any pre-spawn <see cref="File.Exists"/>
+    /// verification cannot fail due to a missing directory.
+    /// </summary>
+    /// <param name="configPath">Absolute path to the <c>soup.yaml</c> file to write.</param>
+    /// <param name="workspacePath">Root of the training workspace (used to derive the repo/app path).</param>
+    /// <param name="datasetPath">Absolute path to the JSONL dataset file.</param>
+    public static async Task<string> WriteConfigFileAsync(string configPath, string workspacePath, string datasetPath)
+    {
+        // Explicitly create the containing .soup directory before writing.
+        var soupDir = Path.GetDirectoryName(configPath);
+        if (!string.IsNullOrEmpty(soupDir) && !Directory.Exists(soupDir))
+            Directory.CreateDirectory(soupDir);
 
         // Retrieve the base model from settings; fall back to Qwen2.5-Coder-1.5B
         string baseModel = !string.IsNullOrWhiteSpace(SettingsManager.SoupBaseModel)
@@ -34,7 +50,7 @@ public static class SoupConfigManager
                 : "Qwen/Qwen2.5-Coder-1.5B");
 
         // Output directory for the fine-tuned adapter / model
-        string outputDir = Path.Combine(soupDir, "output").Replace('\\', '/');
+        string outputDir = Path.Combine(soupDir ?? workspacePath, "output").Replace('\\', '/');
 
         // Normalise dataset path to forward slashes for cross-platform YAML readability
         string datasetNorm = datasetPath.Replace('\\', '/');
@@ -69,7 +85,7 @@ training:
 output: "{outputDir}"
 """;
 
-        await File.WriteAllTextAsync(yamlPath, yaml, System.Text.Encoding.UTF8);
-        return yamlPath;
+        await File.WriteAllTextAsync(configPath, yaml, System.Text.Encoding.UTF8);
+        return configPath;
     }
 }

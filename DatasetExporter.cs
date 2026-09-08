@@ -21,6 +21,16 @@ public static class DatasetExporter
     /// </summary>
     /// <param name="outputPath">Absolute path of the output .jsonl file to create or overwrite.</param>
     /// <returns>The number of records written.</returns>
+    /// <summary>
+    /// Explicitly ensures the output directory exists, then exports the
+    /// ProjectKnowledge entries to a JSONL dataset at <paramref name="outputPath"/>.
+    /// Returns the number of records written.
+    /// </summary>
+    public static async Task<int> ExportAsync(string outputPath)
+    {
+        return await ExportKnowledgeToJsonl(outputPath);
+    }
+
     public static async Task<int> ExportKnowledgeToJsonl(string outputPath)
     {
         // Ensure output directory exists

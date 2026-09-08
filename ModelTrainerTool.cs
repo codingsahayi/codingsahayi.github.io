@@ -48,12 +48,23 @@ public static class ModelTrainerTool
         string soupExePath,
         string configPath,
         Action<string>? onOutputLine,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? workingDirectory = null)
     {
         if (string.IsNullOrWhiteSpace(soupExePath))
             throw new ArgumentException("Soup executable path is required.", nameof(soupExePath));
         if (string.IsNullOrWhiteSpace(configPath))
             throw new ArgumentException("soup.yaml config path is required.", nameof(configPath));
+
+        // Pre-spawn integrity guard: the process cannot start without the generated
+        // soup.yaml on disk. Report the failure to the live console and abort instead
+        // of spawning a process with no config.
+        if (!File.Exists(configPath))
+        {
+            onOutputLine?.Invoke($"❌ Config not found: {configPath}");
+            onOutputLine?.Invoke("⛔ Aborting: soup.yaml is missing. Ensure the .soup directory and config were written before training.");
+            return false;
+        }
 
         var psi = new ProcessStartInfo
         {
@@ -63,7 +74,7 @@ public static class ModelTrainerTool
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             CreateNoWindow = true,
-            WorkingDirectory = Path.GetDirectoryName(configPath) ?? AppContext.BaseDirectory
+            WorkingDirectory = workingDirectory ?? Path.GetDirectoryName(configPath) ?? AppContext.BaseDirectory
         };
 
         var rawBuffer = new StringBuilder();      // full raw (scrubbed) output for metric parsing
