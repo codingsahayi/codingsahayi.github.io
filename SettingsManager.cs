@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Windows.Security.Credentials;
@@ -186,5 +187,27 @@ COMMUNICATION:
             var vault = new PasswordVault();
             vault.Add(new PasswordCredential(ResourceName, ApiKeyUserName, value));
         }
+    }
+
+    /// <summary>
+    /// The location of the local SQLite database file (<c>coding_sahayi.db</c>).
+    /// Persisted in <see cref="ApplicationData.LocalSettings"/>; defaults to the
+    /// AppData folder when unconfigured.
+    /// </summary>
+    public static string DatabasePath
+    {
+        get => LocalSettings.Values["DatabasePath"] as string ?? DefaultDatabasePath;
+        set => LocalSettings.Values["DatabasePath"] = value;
+    }
+
+    /// <summary>Default SQLite database path under %LocalAppData%\CodingSahayi\.</summary>
+    public static string DefaultDatabasePath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CodingSahayi", "coding_sahayi.db");
+
+    /// <summary>Restores the SQLite database path back to the default AppData location.</summary>
+    public static void ResetDatabasePathToDefault()
+    {
+        LocalSettings.Values["DatabasePath"] = DefaultDatabasePath;
     }
 }

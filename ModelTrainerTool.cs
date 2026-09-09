@@ -66,15 +66,31 @@ public static class ModelTrainerTool
             return false;
         }
 
+        // Sanitise the working directory: strip any trailing slash/backslash so the
+        // process is launched from a clean workspace root (Soup looks for .soup/soup.yaml
+        // relative to the CWD, so a trailing "\\" must never survive into the shell).
+        var workDir = (workingDirectory ?? Path.GetDirectoryName(configPath) ?? AppContext.BaseDirectory)
+            .TrimEnd('\\', '/');
+        if (!Directory.Exists(workDir))
+        {
+            onOutputLine?.Invoke($"❌ Working directory does not exist: {workDir}");
+            return false;
+        }
+
+        // Use forward slashes for the --config path. Windows command-line parsing treats
+        // a path ending in "\\" as escaping the closing quote, which truncates the path
+        // handed to Python/Click. Forward slashes sidestep that entirely.
+        var configArg = configPath.Replace('\\', '/');
+
         var psi = new ProcessStartInfo
         {
             FileName = soupExePath,
-            Arguments = $"train --config \"{configPath}\"",
+            Arguments = $"train --config \"{configArg}\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             CreateNoWindow = true,
-            WorkingDirectory = workingDirectory ?? Path.GetDirectoryName(configPath) ?? AppContext.BaseDirectory
+            WorkingDirectory = workDir
         };
 
         var rawBuffer = new StringBuilder();      // full raw (scrubbed) output for metric parsing

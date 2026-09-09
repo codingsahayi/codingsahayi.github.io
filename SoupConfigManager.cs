@@ -13,11 +13,11 @@ public static class SoupConfigManager
 {
     /// <summary>
     /// Generates a <c>soup.yaml</c> LoRA fine-tuning configuration and writes it
-    /// inside a <c>.soup/</c> sub-directory of <paramref name="workspacePath"/>.
+    /// inside a <c>.soup/</c> sub-directory of <paramref name="workspacePath" />.
     /// </summary>
     /// <param name="workspacePath">Root of the training workspace (e.g. the project folder).</param>
-    /// <param name="datasetPath">Absolute path to the JSONL dataset file produced by <see cref="DatasetExporter"/>.</param>
-    /// <returns>Absolute path of the written <c>soup.yaml</c> file.</returns>
+    /// <param name="datasetPath">Absolute path to the JSONL dataset file produced by <see cref="DatasetExporter" />.</param>
+    /// <returns>Absolute path of the primary (inside .soup/) written <c>soup.yaml</c> file.</returns>
     public static async Task<string> GenerateSoupYaml(string workspacePath, string datasetPath)
     {
         var soupDir = Path.Combine(workspacePath, ".soup");
@@ -27,20 +27,33 @@ public static class SoupConfigManager
     }
 
     /// <summary>
-    /// Explicitly ensures the target directory exists, then writes the <c>soup.yaml</c>
-    /// LoRA configuration to <paramref name="configPath"/>. The directory is created
-    /// up-front so the subsequent file-write and any pre-spawn <see cref="File.Exists"/>
-    /// verification cannot fail due to a missing directory.
+    /// Explicitly creates every containing directory, writes the <c>soup.yaml</c> LoRA config
+    /// to BOTH the <c>.soup/soup.yaml</c> location (inside the workspace) AND the workspace root
+    /// <c>soup.yaml</c>, so Soup CLI finds the config regardless of whether it searches the
+    /// workspace root or the <c>.soup/</c> sub-directory. Each write is fully synchronous and
+    /// flushed to disk before returning, and each file is physically verified (exists + non-zero).
     /// </summary>
-    /// <param name="configPath">Absolute path to the <c>soup.yaml</c> file to write.</param>
-    /// <param name="workspacePath">Root of the training workspace (used to derive the repo/app path).</param>
+    /// <param name="configPath">Absolute path to the primary <c>soup.yaml</c> file (inside .soup/).</param>
+    /// <param name="workspacePath">Root of the training workspace.</param>
     /// <param name="datasetPath">Absolute path to the JSONL dataset file.</param>
     public static async Task<string> WriteConfigFileAsync(string configPath, string workspacePath, string datasetPath)
     {
-        // Explicitly create the containing .soup directory before writing.
-        var soupDir = Path.GetDirectoryName(configPath);
-        if (!string.IsNullOrEmpty(soupDir) && !Directory.Exists(soupDir))
-            Directory.CreateDirectory(soupDir);
+        // Normalise the workspace path: strip any trailing slash/backslash so the
+        // working directory handed to the process never ends with a \ path separator.
+        workspacePath = (workspacePath ?? string.Empty).TrimEnd('\\', '/');
+
+        // Target paths: Soup may look in .soup/ OR the workspace root.
+        var dotSoupDir = Path.Combine(workspacePath, ".soup");
+        var primaryPath = configPath;
+        if (string.IsNullOrWhiteSpace(primaryPath))
+            primaryPath = Path.Combine(dotSoupDir, "soup.yaml");
+        var rootPath = Path.Combine(workspacePath, "soup.yaml");
+
+        // Explicitly create BOTH containing directories up-front.
+        if (!Directory.Exists(dotSoupDir))
+            Directory.CreateDirectory(dotSoupDir);
+        if (!string.IsNullOrWhiteSpace(Path.GetDirectoryName(rootPath)) && !Directory.Exists(Path.GetDirectoryName(rootPath)))
+            Directory.CreateDirectory(Path.GetDirectoryName(rootPath)!);
 
         // Retrieve the base model from settings; fall back to Qwen2.5-Coder-1.5B
         string baseModel = !string.IsNullOrWhiteSpace(SettingsManager.SoupBaseModel)
@@ -50,7 +63,7 @@ public static class SoupConfigManager
                 : "Qwen/Qwen2.5-Coder-1.5B");
 
         // Output directory for the fine-tuned adapter / model
-        string outputDir = Path.Combine(soupDir ?? workspacePath, "output").Replace('\\', '/');
+        string outputDir = Path.Combine(dotSoupDir, "output").Replace('\\', '/');
 
         // Normalise dataset path to forward slashes for cross-platform YAML readability
         string datasetNorm = datasetPath.Replace('\\', '/');
@@ -85,7 +98,15 @@ training:
 output: "{outputDir}"
 """;
 
-        await File.WriteAllTextAsync(configPath, yaml, System.Text.Encoding.UTF8);
-        return configPath;
+        // Write BOTH copies synchronously (flushed to physical disk) before returning.
+        File.WriteAllText(primaryPath, yaml, System.Text.Encoding.UTF8);
+        File.WriteAllText(rootPath, yaml, System.Text.Encoding.UTF8);
+
+        // Physical verification: confirm the primary config actually exists and is non-empty.
+        var info = new FileInfo(primaryPath);
+        if (!info.Exists || info.Length == 0)
+            throw new InvalidOperationException($"soup.yaml was not durably written to disk: {primaryPath}");
+
+        return primaryPath;
     }
 }

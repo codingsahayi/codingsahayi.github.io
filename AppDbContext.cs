@@ -16,11 +16,12 @@ namespace CodingSahayi.Data
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            var folder = Environment.SpecialFolder.LocalApplicationData;
-            var path = Environment.GetFolderPath(folder);
-            var dbPath = Path.Join(path, "CodingSahayi", "coding_sahayi.db");
+            // Resolve the database path from user configuration (defaults to AppData).
+            var dbPath = SettingsManager.DatabasePath;
+            if (string.IsNullOrWhiteSpace(dbPath))
+                dbPath = SettingsManager.DefaultDatabasePath;
 
-            // Ensure directory exists
+            // Ensure the parent directory exists before opening a connection.
             var directory = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
@@ -46,6 +47,23 @@ namespace CodingSahayi.Data
             };
 
             optionsBuilder.UseSqlite(connection);
+        }
+
+        /// <summary>
+        /// Ensures the database directory exists and the schema/tables are created at the
+        /// configured <see cref="SettingsManager.DatabasePath" />. WAL mode is enabled by
+        /// the connection open handler. Call this after changing the database path so the
+        /// new location is materialised immediately.
+        /// </summary>
+        public static void InitializeDatabase()
+        {
+            var dbPath = SettingsManager.DatabasePath;
+            var directory = Path.GetDirectoryName(dbPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+
+            using var db = new AppDbContext();
+            db.Database.EnsureCreated();
         }
     }
 }

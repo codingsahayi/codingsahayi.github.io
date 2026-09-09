@@ -10,264 +10,305 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,24" />
 
-    <ScrollViewer Grid.Row="1" MaxHeight="500">
-        <StackPanel Spacing="8" MinWidth="900">
-            <toolkit:SettingsExpander Header="Model Providers" Description="Configure available models and providers" IsExpanded="True">
-                <toolkit:SettingsExpander.Items>
-                    <toolkit:SettingsCard ContentAlignment="Left">
-                        <StackPanel Spacing="8" HorizontalAlignment="Stretch">
-                            <ListView x:Name="ModelsListView" SelectionMode="None">
-                                <ListView.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Padding="8" ColumnSpacing="8" HorizontalAlignment="Stretch">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            
-                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding BaseUrl}" FontSize="12" Opacity="0.7" />
-                                            </StackPanel>
-                                            
-                                            <Border Grid.Column="1" Background="#330066FF" CornerRadius="4" Padding="4,2" VerticalAlignment="Center">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="P" FontSize="12" />
-                                                    <TextBlock Text="{Binding Priority}" FontSize="12" />
+        <TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,20" />
+
+        <!-- Removed MaxHeight="500" so it fills the screen dynamically -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="16" MaxWidth="1100" HorizontalAlignment="Left">
+
+                <!-- 1. MODEL PROVIDERS -->
+                <toolkit:SettingsExpander Header="Model Providers" Description="Configure available models and providers" IsExpanded="False">
+                    <toolkit:SettingsExpander.Items>
+                        <toolkit:SettingsCard ContentAlignment="Left">
+                            <StackPanel Spacing="8" HorizontalAlignment="Stretch">
+                                <ListView x:Name="ModelsListView" SelectionMode="None">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Padding="8" ColumnSpacing="8" HorizontalAlignment="Stretch">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding BaseUrl}" FontSize="12" Opacity="0.7" />
                                                 </StackPanel>
-                                            </Border>
-                                            
-                                            <Border Grid.Column="2" Background="#33008800" CornerRadius="4" Padding="4,2" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding CostTier}" FontSize="12" />
-                                            </Border>
-                                            
-                                            <Button Grid.Column="3" Content="Edit" CommandParameter="{Binding}" Click="EditModel_Click" />
-                                            <Button Grid.Column="4" Content="Delete" CommandParameter="{Binding}" Click="DeleteModel_Click" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-                            
-                            <Button Content="＋ Add Model / Provider" Click="AddModel_Click" Margin="0,8,0,0"/>
-                            
-                            <StackPanel x:Name="ModelEditorPanel" Visibility="Collapsed" Spacing="16" Margin="0,16,0,0" Padding="20" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                <StackPanel Spacing="4">
-                                    <TextBlock x:Name="EditorTitle" Text="Edit Provider" FontSize="18" FontWeight="SemiBold" />
-                                    <TextBlock Text="Connection and credential details" FontSize="12" Foreground="Gray" />
-                                </StackPanel>
 
-                                <Grid ColumnSpacing="16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="EditDisplayName" Header="Provider" HorizontalAlignment="Stretch" IsEditable="True">
-                                        <x:String>OpenAI</x:String>
-                                        <x:String>Anthropic</x:String>
-                                        <x:String>Google</x:String>
-                                        <x:String>Ollama (Local)</x:String>
-                                        <x:String>LM Studio (Local)</x:String>
-                                        <x:String>DeepSeek</x:String>
-                                    </ComboBox>
-                                    <TextBox x:Name="EditModelIdentifier" Header="Model Name" Grid.Column="1" HorizontalAlignment="Stretch" />
-                                </Grid>
+                                                <Border Grid.Column="1" Background="#330066FF" CornerRadius="4" Padding="4,2" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="P" FontSize="12" />
+                                                        <TextBlock Text="{Binding Priority}" FontSize="12" />
+                                                    </StackPanel>
+                                                </Border>
 
-                                <StackPanel Spacing="4">
-                                    <PasswordBox x:Name="EditApiKey" Header="API Key" HorizontalAlignment="Stretch" />
-                                    <TextBlock Text="Encrypted at rest and masked after saving." FontSize="11" Foreground="Gray" />
-                                </StackPanel>
+                                                <Border Grid.Column="2" Background="#33008800" CornerRadius="4" Padding="4,2" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding CostTier}" FontSize="12" />
+                                                </Border>
 
-                                <TextBox x:Name="EditBaseUrl" Header="API Endpoint (optional)" HorizontalAlignment="Stretch" />
+                                                <Button Grid.Column="3" Content="Edit" CommandParameter="{Binding}" Click="EditModel_Click" />
+                                                <Button Grid.Column="4" Content="Delete" CommandParameter="{Binding}" Click="DeleteModel_Click" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
 
-                                <Grid ColumnSpacing="16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="EditCostTierBox" Header="Billing Type" Grid.Column="0" HorizontalAlignment="Stretch">
-                                        <x:String>Free tier</x:String>
-                                        <x:String>Paid</x:String>
-                                        <x:String>Local</x:String>
-                                    </ComboBox>
-                                    <ComboBox x:Name="EditPriority" Header="Priority" Grid.Column="1" HorizontalAlignment="Stretch">
-                                        <x:String>1 — Primary</x:String>
-                                        <x:String>2 — Secondary</x:String>
-                                        <x:String>3 — Fallback</x:String>
-                                    </ComboBox>
-                                </Grid>
+                                <Button Content="＋ Add Model / Provider" Click="AddModel_Click" Margin="0,8,0,0"/>
 
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Enabled" FontWeight="SemiBold" />
-                                        <TextBlock Text="Allow applications to use this model." FontSize="12" Foreground="Gray" />
-                                    </StackPanel>
-                                    <ToggleSwitch x:Name="EditIsEnabled" Grid.Column="1" IsOn="True" OnContent="" OffContent="" VerticalAlignment="Center" Margin="0" />
-                                </Grid>
-
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Use as platform default" FontWeight="SemiBold" />
-                                        <TextBlock Text="New AI features inherit this model." FontSize="12" Foreground="Gray" />
-                                    </StackPanel>
-                                    <ToggleSwitch x:Name="EditIsDefault" Grid.Column="1" IsOn="False" OnContent="" OffContent="" VerticalAlignment="Center" Margin="0" />
-                                </Grid>
-
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Allow fallback" FontWeight="SemiBold" />
-                                        <TextBlock Text="Use when the primary model is unavailable." FontSize="12" Foreground="Gray" />
-                                    </StackPanel>
-                                    <ToggleSwitch x:Name="EditAllowFallback" Grid.Column="1" IsOn="True" OnContent="" OffContent="" VerticalAlignment="Center" Margin="0" />
-                                </Grid>
-
-                                <Border Background="#100078D4" BorderBrush="#0078D4" BorderThickness="4,0,0,0" Padding="12" CornerRadius="0,4,4,0">
+                                <StackPanel x:Name="ModelEditorPanel" Visibility="Collapsed" Spacing="16" Margin="0,16,0,0" Padding="20" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Security recommendation" FontWeight="SemiBold" FontSize="12" />
-                                        <TextBlock Text="Keep API keys server-side, encrypted at rest, and masked in Admin. Prefer a secure secret store or configuration service for production credentials." FontSize="12" Foreground="Gray" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="EditorTitle" Text="Edit Provider" FontSize="18" FontWeight="SemiBold" />
+                                        <TextBlock Text="Connection and credential details" FontSize="12" Foreground="Gray" />
                                     </StackPanel>
-                                </Border>
 
-                                <Grid Margin="0,8,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    
-                                    <Button x:Name="TestConnectionBtn" Grid.Column="0" Click="TestConnection_Click">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <FontIcon Glyph="&#xE9D9;" FontSize="14" Foreground="#0078D4" />
-                                            <TextBlock Text="Test Connection" Foreground="#0078D4" />
+                                    <Grid ColumnSpacing="16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="EditDisplayName" Header="Provider" HorizontalAlignment="Stretch" IsEditable="True">
+                                            <x:String>OpenAI</x:String>
+                                            <x:String>Anthropic</x:String>
+                                            <x:String>Google</x:String>
+                                            <x:String>Ollama (Local)</x:String>
+                                            <x:String>LM Studio (Local)</x:String>
+                                            <x:String>DeepSeek</x:String>
+                                        </ComboBox>
+                                        <TextBox x:Name="EditModelIdentifier" Header="Model Name" Grid.Column="1" HorizontalAlignment="Stretch" />
+                                    </Grid>
+
+                                    <StackPanel Spacing="4">
+                                        <PasswordBox x:Name="EditApiKey" Header="API Key" HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="Encrypted at rest and masked after saving." FontSize="11" Foreground="Gray" />
+                                    </StackPanel>
+
+                                    <TextBox x:Name="EditBaseUrl" Header="API Endpoint (optional)" HorizontalAlignment="Stretch" />
+
+                                    <Grid ColumnSpacing="16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="EditCostTierBox" Header="Billing Type" Grid.Column="0" HorizontalAlignment="Stretch">
+                                            <x:String>Free tier</x:String>
+                                            <x:String>Paid</x:String>
+                                            <x:String>Local</x:String>
+                                        </ComboBox>
+                                        <ComboBox x:Name="EditPriority" Header="Priority" Grid.Column="1" HorizontalAlignment="Stretch">
+                                            <x:String>1 — Primary</x:String>
+                                            <x:String>2 — Secondary</x:String>
+                                            <x:String>3 — Fallback</x:String>
+                                        </ComboBox>
+                                    </Grid>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Enabled" FontWeight="SemiBold" />
+                                            <TextBlock Text="Allow applications to use this model." FontSize="12" Foreground="Gray" />
                                         </StackPanel>
-                                    </Button>
-                                    
-                                    <Border x:Name="TestResultBorder" Grid.Column="1" Margin="16,0,16,0" Background="#1E8A38" CornerRadius="4" Padding="12,6" Visibility="Collapsed" VerticalAlignment="Center">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <FontIcon Glyph="&#xE73E;" FontSize="12" Foreground="White" />
-                                            <TextBlock x:Name="TestResultText" Text="Connection successful!" Foreground="White" FontSize="12" FontWeight="SemiBold" />
+                                        <ToggleSwitch x:Name="EditIsEnabled" Grid.Column="1" IsOn="True" OnContent="" OffContent="" VerticalAlignment="Center" Margin="0" />
+                                    </Grid>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Use as platform default" FontWeight="SemiBold" />
+                                            <TextBlock Text="New AI features inherit this model." FontSize="12" Foreground="Gray" />
+                                        </StackPanel>
+                                        <ToggleSwitch x:Name="EditIsDefault" Grid.Column="1" IsOn="False" OnContent="" OffContent="" VerticalAlignment="Center" Margin="0" />
+                                    </Grid>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Allow fallback" FontWeight="SemiBold" />
+                                            <TextBlock Text="Use when the primary model is unavailable." FontSize="12" Foreground="Gray" />
+                                        </StackPanel>
+                                        <ToggleSwitch x:Name="EditAllowFallback" Grid.Column="1" IsOn="True" OnContent="" OffContent="" VerticalAlignment="Center" Margin="0" />
+                                    </Grid>
+
+                                    <Border Background="#100078D4" BorderBrush="#0078D4" BorderThickness="4,0,0,0" Padding="12" CornerRadius="0,4,4,0">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Security recommendation" FontWeight="SemiBold" FontSize="12" />
+                                            <TextBlock Text="Keep API keys server-side, encrypted at rest, and masked in Admin. Prefer a secure secret store or configuration service for production credentials." FontSize="12" Foreground="Gray" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
 
-                                    <Button Grid.Column="2" Content="Cancel" Click="CancelEditModel_Click" Margin="0,0,8,0" VerticalAlignment="Bottom" />
-                                    <Button Grid.Column="3" Content="Save Provider" Style="{StaticResource AccentButtonStyle}" Click="SaveModel_Click" VerticalAlignment="Bottom" />
-                                </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="TestConnectionBtn" Grid.Column="0" Click="TestConnection_Click">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon Glyph="&#xE9D9;" FontSize="14" Foreground="#0078D4" />
+                                                <TextBlock Text="Test Connection" Foreground="#0078D4" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Border x:Name="TestResultBorder" Grid.Column="1" Margin="16,0,16,0" Background="#1E8A38" CornerRadius="4" Padding="12,6" Visibility="Collapsed" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon Glyph="&#xE73E;" FontSize="12" Foreground="White" />
+                                                <TextBlock x:Name="TestResultText" Text="Connection successful!" Foreground="White" FontSize="12" FontWeight="SemiBold" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Button Grid.Column="2" Content="Cancel" Click="CancelEditModel_Click" Margin="0,0,8,0" VerticalAlignment="Bottom" />
+                                        <Button Grid.Column="3" Content="Save Provider" Style="{StaticResource AccentButtonStyle}" Click="SaveModel_Click" VerticalAlignment="Bottom" />
+                                    </Grid>
+                                </StackPanel>
                             </StackPanel>
-                        </StackPanel>
-                    </toolkit:SettingsCard>
-                </toolkit:SettingsExpander.Items>
-            </toolkit:SettingsExpander>
-            
-            <toolkit:SettingsExpander Header="Local Model Fine-Tuning (Soup)"
-                                      Description="LoRA fine-tune on your ProjectKnowledge database using Soup (D:\Soup)"
-                                      IsExpanded="False">
-                <toolkit:SettingsExpander.HeaderIcon>
-                    <FontIcon Glyph="&#xE9D5;" />
-                </toolkit:SettingsExpander.HeaderIcon>
-                <toolkit:SettingsExpander.Items>
-                    <toolkit:SettingsCard Header="Soup Repository Path" Description="Path to cloned Soup repository or venv (e.g. D:\Soup)">
-                        <TextBox x:Name="SoupPathBox" Width="250" />
-                    </toolkit:SettingsCard>
-                    <toolkit:SettingsCard Header="Base Model" Description="HuggingFace model ID or local weights path (e.g. Qwen/Qwen2.5-Coder-1.5B)">
-                        <TextBox x:Name="SoupBaseModelBox" Width="250" />
-                    </toolkit:SettingsCard>
-                    <toolkit:SettingsCard ContentAlignment="Left">
-                        <StackPanel Spacing="12">
-                            <TextBlock TextWrapping="Wrap" Opacity="0.7"
-                                       Text="Exports your ProjectKnowledge entries to a JSONL dataset, generates a soup.yaml LoRA config (with layer streaming enabled), and runs 'soup train' streaming live output to the console below." />
+                        </toolkit:SettingsCard>
+                    </toolkit:SettingsExpander.Items>
+                </toolkit:SettingsExpander>
 
-                            <!-- Execution controls -->
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <Button x:Name="StartFineTuningButton"
-                                        Content="▶  Start Fine-Tuning"
-                                        Style="{StaticResource AccentButtonStyle}"
-                                        Click="StartFineTuningButton_Click" />
-                                <Button x:Name="CancelFineTuningButton"
-                                        Content="Stop Training"
-                                        IsEnabled="False"
-                                        Click="CancelFineTuningButton_Click">
-                                    <Button.Resources>
-                                        <Style TargetType="Button">
-                                            <Setter Property="Foreground" Value="#E81123" />
-                                            <Setter Property="BorderBrush" Value="#E81123" />
-                                            <Setter Property="BorderThickness" Value="1" />
-                                        </Style>
-                                    </Button.Resources>
-                                </Button>
-                                <Button x:Name="ClearLogsButton"
-                                        Content="Clear Output"
-                                        Click="ClearLogsButton_Click" />
-                                <ProgressRing x:Name="TrainingProgressRing"
-                                              IsActive="False"
-                                              Width="20"
-                                              Height="20"
-                                              Margin="10,0,0,0" />
-                                <TextBlock x:Name="TrainingStatusLabel"
-                                           Text="Status: Idle"
-                                           Foreground="#91a3b0"
-                                           VerticalAlignment="Center" />
+                <!-- 2. DATABASE & STORAGE -->
+                <toolkit:SettingsExpander Header="Database &amp; Storage"
+                                          Description="Manage local SQLite storage location for memory and metrics"
+                                          IsExpanded="False">
+                    <toolkit:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE8B7;" />
+                    </toolkit:SettingsExpander.HeaderIcon>
+                    <toolkit:SettingsExpander.Items>
+                        <toolkit:SettingsCard ContentAlignment="Left">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="SQLite Database Path" FontWeight="SemiBold" />
+                                <TextBox x:Name="DatabasePathBox"
+                                         HorizontalAlignment="Stretch"
+                                         IsReadOnly="False"
+                                         PlaceholderText="C:\Users\&lt;user&gt;\AppData\Local\CodingSahayi\coding_sahayi.db" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button x:Name="BrowseDbPathButton"
+                                            Content="📁 Browse..."
+                                            Click="BrowseDbPathButton_Click" />
+                                    <Button x:Name="ResetDbPathButton"
+                                            Content="Reset to Default"
+                                            Click="ResetDbPathButton_Click" />
+                                    <Button x:Name="SaveDbPathButton"
+                                            Content="Apply &amp; Save"
+                                            Style="{StaticResource AccentButtonStyle}"
+                                            Click="SaveDbPathButton_Click" />
+                                </StackPanel>
+                                <InfoBar x:Name="DbPathInfoBar"
+                                         IsOpen="False"
+                                         Severity="Informational"
+                                         Title="Database Path"
+                                         Message="Database path updated. Existing connections will use the new path on next query." />
                             </StackPanel>
+                        </toolkit:SettingsCard>
+                    </toolkit:SettingsExpander.Items>
+                </toolkit:SettingsExpander>
 
-                            <!-- Live execution console -->
-                            <Border Background="#05080c"
-                                    BorderBrush="#1a2636"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    MinHeight="240"
-                                    MaxHeight="360">
-                                <ScrollViewer x:Name="SoupLogScrollViewer"
-                                              VerticalScrollBarVisibility="Auto"
-                                              HorizontalScrollBarVisibility="Auto"
-                                              Padding="12">
-                                    <TextBox x:Name="SoupOutputTerminal"
-                                             Text=""
-                                             IsReadOnly="True"
-                                             AcceptsReturn="True"
-                                             TextWrapping="Wrap"
-                                             BorderThickness="0"
-                                             Background="Transparent"
-                                             Foreground="#a6e3a1"
-                                             FontFamily="Cascadia Mono, Consolas"
-                                             FontSize="12" />
-                                </ScrollViewer>
-                            </Border>
+                <!-- 3. LOCAL MODEL FINE-TUNING (SOUP) - Set IsExpanded="True" by default -->
+                <toolkit:SettingsExpander Header="Local Model Fine-Tuning (Soup)"
+                                          Description="LoRA fine-tune on your ProjectKnowledge database using Soup (D:\Soup)"
+                                          IsExpanded="True">
+                    <toolkit:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE9D5;" />
+                    </toolkit:SettingsExpander.HeaderIcon>
+                    <toolkit:SettingsExpander.Items>
+                        <toolkit:SettingsCard Header="Soup Repository Path" Description="Path to cloned Soup repository or venv (e.g. D:\Soup)">
+                            <TextBox x:Name="SoupPathBox" Width="320" Text="D:\Soup" />
+                        </toolkit:SettingsCard>
+                        <toolkit:SettingsCard Header="Base Model" Description="HuggingFace model ID or local weights path (e.g. Qwen/Qwen2.5-Coder-1.5B)">
+                            <TextBox x:Name="SoupBaseModelBox" Width="320" Text="Qwen/Qwen2.5-Coder-1.5B" />
+                        </toolkit:SettingsCard>
+                        <toolkit:SettingsCard ContentAlignment="Left">
+                            <StackPanel Spacing="12">
+                                <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                                           Text="Exports your ProjectKnowledge entries to a JSONL dataset, generates a soup.yaml LoRA config (with layer streaming enabled), and runs 'soup train' streaming live output to the console below." />
 
-                            <TextBlock x:Name="FineTuneStatusText"
-                                       TextWrapping="Wrap"
-                                       FontFamily="Consolas"
-                                       FontSize="12"
-                                       Opacity="0.85"
-                                       Text="" />
-                        </StackPanel>
-                    </toolkit:SettingsCard>
-                </toolkit:SettingsExpander.Items>
-            </toolkit:SettingsExpander>
-            
-            <toolkit:SettingsExpander Header="System Prompt" Description="Agent rules and operating context" IsExpanded="True">
-                <toolkit:SettingsExpander.Items>
-                    <toolkit:SettingsCard ContentAlignment="Left">
-                        <TextBox x:Name="SystemPromptBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="150" HorizontalAlignment="Stretch" />
-                    </toolkit:SettingsCard>
-                </toolkit:SettingsExpander.Items>
-            </toolkit:SettingsExpander>
-        </StackPanel>
-    </ScrollViewer>
+                                <!-- Execution controls -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <Button x:Name="StartFineTuningButton"
+                                            Content="▶  Start Fine-Tuning"
+                                            Style="{StaticResource AccentButtonStyle}"
+                                            Click="StartFineTuningButton_Click" />
+                                    <Button x:Name="CancelFineTuningButton"
+                                            Content="Stop Training"
+                                            IsEnabled="False"
+                                            Click="CancelFineTuningButton_Click">
+                                        <Button.Resources>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Foreground" Value="#E81123" />
+                                                <Setter Property="BorderBrush" Value="#E81123" />
+                                                <Setter Property="BorderThickness" Value="1" />
+                                            </Style>
+                                        </Button.Resources>
+                                    </Button>
+                                    <Button x:Name="ClearLogsButton"
+                                            Content="Clear Output"
+                                            Click="ClearLogsButton_Click" />
+                                    <ProgressRing x:Name="TrainingProgressRing"
+                                                  IsActive="False"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="10,0,0,0" />
+                                    <TextBlock x:Name="TrainingStatusLabel"
+                                               Text="Status: Idle"
+                                               Foreground="#91a3b0"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Live execution console -->
+                                <Border Background="#05080c"
+                                        BorderBrush="#1a2636"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        MinHeight="250"
+                                        MaxHeight="380">
+                                    <ScrollViewer x:Name="SoupLogScrollViewer"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  Padding="12">
+                                        <TextBox x:Name="SoupOutputTerminal"
+                                                 Text=""
+                                                 IsReadOnly="True"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 BorderThickness="0"
+                                                 Background="Transparent"
+                                                 Foreground="#a6e3a1"
+                                                 FontFamily="Cascadia Mono, Consolas"
+                                                 FontSize="12" />
+                                    </ScrollViewer>
+                                </Border>
+
+                                <TextBlock x:Name="FineTuneStatusText"
+                                           TextWrapping="Wrap"
+                                           FontFamily="Consolas"
+                                           FontSize="12"
+                                           Opacity="0.85"
+                                           Text="" />
+                            </StackPanel>
+                        </toolkit:SettingsCard>
+                    </toolkit:SettingsExpander.Items>
+                </toolkit:SettingsExpander>
+
+                <!-- 3. SYSTEM PROMPT -->
+                <toolkit:SettingsExpander Header="System Prompt" Description="Agent rules and operating context" IsExpanded="False">
+                    <toolkit:SettingsExpander.Items>
+                        <toolkit:SettingsCard ContentAlignment="Left">
+                            <TextBox x:Name="SystemPromptBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="140" HorizontalAlignment="Stretch" />
+                        </toolkit:SettingsCard>
+                    </toolkit:SettingsExpander.Items>
+                </toolkit:SettingsExpander>
+
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Page>

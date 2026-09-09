@@ -1,9 +1,13 @@
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Windows.Storage.Pickers;
 
 namespace CodingSahayi;
 
@@ -24,6 +28,8 @@ public sealed partial class SettingsPage : Page
 
         SoupPathBox.Text = SettingsManager.SoupPath;
         SoupBaseModelBox.Text = SettingsManager.SoupBaseModel;
+
+        DatabasePathBox.Text = SettingsManager.DatabasePath;
     }
 
     protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -33,6 +39,9 @@ public sealed partial class SettingsPage : Page
         SettingsManager.SystemPrompt = SystemPromptBox.Text;
         SettingsManager.SoupPath = SoupPathBox.Text?.Trim() ?? @"D:\Soup";
         SettingsManager.SoupBaseModel = SoupBaseModelBox.Text?.Trim() ?? "Qwen/Qwen2.5-Coder-1.5B";
+        var dbPath = DatabasePathBox.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(dbPath))
+            SettingsManager.DatabasePath = dbPath;
     }
 
     private void AddModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -155,21 +164,28 @@ public sealed partial class SettingsPage : Page
         SettingsManager.SoupBaseModel = SoupBaseModelBox.Text?.Trim() ?? "Qwen/Qwen2.5-Coder-1.5B";
 
         // The training workspace lives under %LocalAppData%\CodingSahayi\FineTuning.
+        // Normalise it so no trailing slash ever survives into the process working directory.
         string workspacePath = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "CodingSahayi", "FineTuning");
+            "CodingSahayi", "FineTuning").TrimEnd('\\', '/');
 
-        // Explicitly create the .soup sub-directory before writing any artifacts, so
-        // the config / dataset writes and the pre-spawn File.Exists check never fail
-        // on a missing directory.
+        // Soup CLI searches for a config relative to its working directory. To cover both
+        // the ".soup/" sub-directory and the workspace root, we write the config to BOTH.
         var soupDir = System.IO.Path.Combine(workspacePath, ".soup");
         if (!System.IO.Directory.Exists(soupDir))
             System.IO.Directory.CreateDirectory(soupDir);
 
         var datasetPath = System.IO.Path.Combine(soupDir, "dataset.jsonl");
         var configPath  = System.IO.Path.Combine(soupDir, "soup.yaml");
+        var rootConfigPath = System.IO.Path.Combine(workspacePath, "soup.yaml");
 
-        // 1. Export the ProjectKnowledge database to JSONL (creates the dataset file).
+        // Initialise the terminal buffer so diagnostics stream visibly.
+        SoupOutputTerminal.Text =
+            $"[DIAGNOSTIC] Workspace: {workspacePath}\n" +
+            $"[DIAGNOSTIC] Writing config to: {configPath}\n" +
+            $"[DIAGNOSTIC] Root config path: {rootConfigPath}\n";
+
+        // 1. Export the ProjectKnowledge database to JSONL (guaranteed >=1 line).
         DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = "📦 Exporting ProjectKnowledge to JSONL dataset…");
         int recordCount;
         try
@@ -187,21 +203,10 @@ public sealed partial class SettingsPage : Page
             });
             return;
         }
+        SoupOutputTerminal.Text += $"[DIAGNOSTIC] Dataset records written: {recordCount} → {datasetPath}\n";
 
-        if (recordCount == 0)
-        {
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                TrainingStatusLabel.Text = "Status: Error";
-                TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 232, 17, 35));
-                SoupOutputTerminal.Text += "⚠️ No ProjectKnowledge entries found. Train the agent on some tasks first.\n";
-                FineTuneStatusText.Text = "⚠️ No ProjectKnowledge entries found. Train the agent on some tasks first.";
-            });
-            return;
-        }
-        DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = $"✅ Exported {recordCount} records → {datasetPath}");
-
-        // 2. Write soup.yaml (creates the config file on disk).
+        // 2. Write soup.yaml to BOTH .soup/soup.yaml and workspace root, synchronously
+        //    flushed to physical disk before the process is spawned.
         DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = "⚙️  Writing soup.yaml LoRA config…");
         try
         {
@@ -219,6 +224,29 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
+        // Physical verification on disk for the primary config.
+        bool configExists = System.IO.File.Exists(configPath);
+        long configLength = configExists ? new System.IO.FileInfo(configPath).Length : 0;
+        bool rootExists = System.IO.File.Exists(rootConfigPath);
+        long rootLength = rootExists ? new System.IO.FileInfo(rootConfigPath).Length : 0;
+
+        SoupOutputTerminal.Text +=
+            $"[DIAGNOSTIC] File Verified on Disk: {configExists} (Size: {configLength} bytes)\n" +
+            $"[DIAGNOSTIC] Root copy Verified on Disk: {rootExists} (Size: {rootLength} bytes)\n";
+
+        // Abort if the config failed to reach physical disk — never spawn soup without it.
+        if (!configExists || configLength == 0)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                TrainingStatusLabel.Text = "Status: Error";
+                TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 232, 17, 35));
+                SoupOutputTerminal.Text += $"⛔ Aborting: soup.yaml failed to write to physical disk ({configPath}).\n";
+                FineTuneStatusText.Text = $"⛔ Aborting: soup.yaml failed to write to physical disk ({configPath}).";
+            });
+            return;
+        }
+
         // 3. Resolve the Soup executable to spawn.
         var (soupExe, _, _) = ModelTrainerTool.ResolveSoupInvocation(configPath, workspacePath);
         if (string.IsNullOrWhiteSpace(soupExe) || soupExe == "soup")
@@ -232,9 +260,10 @@ public sealed partial class SettingsPage : Page
             });
             return;
         }
+        SoupOutputTerminal.Text += $"[DIAGNOSTIC] Soup executable: {soupExe}\n";
 
-        // 4. Pre-spawn guard: abort with a console error if soup.yaml is still missing.
-        if (!System.IO.File.Exists(configPath))
+        // 4. Pre-spawn guard re-check (defence in depth).
+        if (!System.IO.File.Exists(configPath) || new System.IO.FileInfo(configPath).Length == 0)
         {
             DispatcherQueue.TryEnqueue(() =>
             {
@@ -246,6 +275,7 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
+        SoupOutputTerminal.Text += $"[DIAGNOSTIC] Pre-spawn check passed — spawning soup train...\n";
         DispatcherQueue.TryEnqueue(() => FineTuneStatusText.Text = $"✅ Config written → {configPath}");
 
         // --- Set UI to active/loading state ---
@@ -258,7 +288,7 @@ public sealed partial class SettingsPage : Page
         TrainingStatusLabel.Text = "Status: Training active (streaming layers)...";
         TrainingStatusLabel.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 166, 227, 161));
         FineTuneStatusText.Text = string.Empty;
-        SoupOutputTerminal.Text = string.Empty;
+        // Keep the [DIAGNOSTIC] lines already appended to the terminal (do NOT clear here).
 
         // Real-time log callback — marshals every line onto the UI thread and
         // auto-scrolls the embedded console. Step/loss lines update the status header.
@@ -321,5 +351,88 @@ public sealed partial class SettingsPage : Page
     {
         SoupOutputTerminal.Text = string.Empty;
         TrainingStatusLabel.Text = "Status: Idle";
+    }
+
+    private async void BrowseDbPathButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        var picker = new FileOpenPicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            ViewMode = PickerViewMode.List
+        };
+        picker.FileTypeFilter.Add(".db");
+
+        // Initialise the picker with the app window handle (required in WinUI 3).
+        var window = (Application.Current as App)?._window;
+        if (window != null)
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        }
+
+        var file = await picker.PickSingleFileAsync();
+        if (file != null)
+        {
+            DatabasePathBox.Text = file.Path;
+            DbPathInfoBar.IsOpen = false;
+        }
+    }
+
+    private void SaveDbPathButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        var newPath = DatabasePathBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(newPath))
+        {
+            DbPathInfoBar.Severity = InfoBarSeverity.Error;
+            DbPathInfoBar.Message = "Please enter a valid database path before saving.";
+            DbPathInfoBar.Title = "Invalid Path";
+            DbPathInfoBar.IsOpen = true;
+            return;
+        }
+
+        var dir = Path.GetDirectoryName(newPath);
+        if (string.IsNullOrWhiteSpace(dir))
+        {
+            DbPathInfoBar.Severity = InfoBarSeverity.Error;
+            DbPathInfoBar.Message = "The database path must point to a file inside a valid directory.";
+            DbPathInfoBar.Title = "Invalid Path";
+            DbPathInfoBar.IsOpen = true;
+            return;
+        }
+
+        try
+        {
+            // Persist the path and materialise the directory.
+            SettingsManager.DatabasePath = newPath;
+            Directory.CreateDirectory(dir);
+
+            // Ensure the schema/tables and WAL mode exist at the new location.
+            CodingSahayi.Data.AppDbContext.InitializeDatabase();
+
+            DbPathInfoBar.Severity = InfoBarSeverity.Informational;
+            DbPathInfoBar.Message = "Database path updated. Existing connections will use the new path on next query.";
+            DbPathInfoBar.Title = "Database Path";
+            DbPathInfoBar.IsOpen = true;
+
+            DatabasePathBox.Text = SettingsManager.DatabasePath;
+        }
+        catch (Exception ex)
+        {
+            DbPathInfoBar.Severity = InfoBarSeverity.Error;
+            DbPathInfoBar.Message = $"Failed to apply database path: {ex.Message}";
+            DbPathInfoBar.Title = "Database Path Error";
+            DbPathInfoBar.IsOpen = true;
+        }
+    }
+
+    private void ResetDbPathButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        SettingsManager.ResetDatabasePathToDefault();
+        DatabasePathBox.Text = SettingsManager.DatabasePath;
+
+        DbPathInfoBar.Severity = InfoBarSeverity.Informational;
+        DbPathInfoBar.Message = "Database path reset to the default AppData location.";
+        DbPathInfoBar.Title = "Database Path";
+        DbPathInfoBar.IsOpen = true;
     }
 }

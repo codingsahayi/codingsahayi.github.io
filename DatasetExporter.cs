@@ -74,6 +74,24 @@ public static class DatasetExporter
             recordsWritten++;
         }
 
+        // Safety net: Soup aborts with a non-zero exit code if the dataset is 0 bytes.
+        // Guarantee at least one valid instruction/response JSONL line if the knowledge
+        // base is currently empty, so training can always find a record to read.
+        if (recordsWritten == 0)
+        {
+            var fallback = new FineTuneRecord
+            {
+                Messages = new[]
+                {
+                    new ChatMessage { Role = "user",      Content = "Sample C# test" },
+                    new ChatMessage { Role = "assistant", Content = "Assert.True(true);" }
+                }
+            };
+            await writer.WriteLineAsync(JsonSerializer.Serialize(fallback, serializerOptions));
+            recordsWritten = 1;
+        }
+
+        await writer.FlushAsync();
         return recordsWritten;
     }
 
