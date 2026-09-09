@@ -34,8 +34,8 @@
                             <TextBlock Text="{Binding Text}" FontFamily="Consolas" Grid.Column="0" />
                             <!-- A simple representation since we don't have a complex viewmodel -->
                             <StackPanel Orientation="Horizontal" Grid.Column="1">
-                                <Button Content="✓" Click="Accept_Click" />
-                                <Button Content="✗" Click="Reject_Click" />
+                                <Button Content="✓" Click="AcceptButton_Click" />
+                                <Button Content="✗" Click="RejectButton_Click" />
                             </StackPanel>
                         </Grid>
                     </DataTemplate>

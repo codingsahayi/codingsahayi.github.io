@@ -557,7 +557,7 @@ public class AgentContextManager
     private async Task<ChatCompletion> ExecuteWithFallbackAsync(CodingSahayi.Data.ModelEndpointConfig primaryConfig, List<ChatMessage> history, ChatCompletionOptions options, Action<string> onStatusUpdate, System.Threading.CancellationToken cancellationToken)
     {
         var currentConfig = primaryConfig;
-        
+
         while (currentConfig != null)
         {
             var client = GetChatClient(currentConfig);
@@ -586,31 +586,49 @@ public class AgentContextManager
                     // for this config, never route a retry or fallback through it.
                     if (!currentConfig.AllowFallback) throw;
 
-                    if (retry < maxRetries && IsTransientError(statusCode, ex))
+                    // Evaluate transient / rate-limit using the native status code first,
+                    // falling back to message inspection when no status is available.
+                    bool isTransientOrRateLimit = false;
+                    if (ex is System.ClientModel.ClientResultException crex2)
+                    {
+                        // Rate Limits (429), Overloaded (529), and transient cloud errors (500-504).
+                        isTransientOrRateLimit = crex2.Status is 429 or 529 or (>= 500 and <= 504);
+                    }
+                    else if (ex.Message.Contains("429") || ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
+                    {
+                        isTransientOrRateLimit = true;
+                    }
+
+                    if (isTransientOrRateLimit)
+                    {
+                        // Route straight to the configured fallback model when present, so we
+                        // don't burn the retry budget on a repeatedly failing primary.
+                        var fallback = SettingsManager.ConfiguredModels
+                            .FirstOrDefault(m => m.Id == currentConfig.FallbackModelId && m.IsEnabled);
+
+                        if (fallback != null)
+                        {
+                            Serilog.Log.Warning(ex, "Primary model {ModelName} rate-limited/transient. Falling back to {FallbackName}", currentConfig.DisplayName, fallback.DisplayName);
+                            onStatusUpdate($"Model {currentConfig.DisplayName} unavailable. Falling back to {fallback.DisplayName}...");
+                            currentConfig = fallback;
+                            break; // restart the (fresh) retry loop against the fallback config
+                        }
+                    }
+
+                    if (retry < maxRetries && isTransientOrRateLimit)
                     {
                         int delaySeconds = (int)Math.Pow(2, retry + 1);
                         onStatusUpdate($"Rate limited / transient error. Retrying in {delaySeconds}s... (attempt {retry + 1}/{maxRetries})");
                         await Task.Delay(delaySeconds * 1000, cancellationToken);
                     }
-                    else if (retry == maxRetries || !IsTransientError(statusCode, ex))
+                    else
                     {
-                        if (!string.IsNullOrEmpty(currentConfig.FallbackModelId))
-                        {
-                            var fallbackConfig = SettingsManager.ConfiguredModels.FirstOrDefault(m => m.Id == currentConfig.FallbackModelId && m.IsEnabled);
-                            if (fallbackConfig != null)
-                            {
-                                Serilog.Log.Warning(ex, "Primary model {ModelName} failed. Falling back to {FallbackName}", currentConfig.DisplayName, fallbackConfig.DisplayName);
-                                onStatusUpdate($"Model {currentConfig.DisplayName} failed. Falling back to {fallbackConfig.DisplayName}...");
-                                currentConfig = fallbackConfig;
-                                break; // break retry loop to try fallback
-                            }
-                        }
-                        throw; // No fallback or fallback failed
+                        throw; // No usable fallback and retries exhausted (or non-transient).
                     }
                 }
             }
         }
-        
+
         throw new Exception("No available models to execute the request.");
     }
 
@@ -876,28 +894,6 @@ public class AgentContextManager
                 _apiHistory.RemoveAt(1);
             }
         }
-    }
-
-    private static bool IsTransientError(int statusCode, Exception ex)
-    {
-        // Prefer the structured HTTP status when available (ClientResultException).
-        if (statusCode != 0)
-        {
-            // 429 Too Many Requests, 529 Overloaded, and transient 5xx (500-504) are retryable.
-            if (statusCode is 429 or 529) return true;
-            if (statusCode >= 500 && statusCode <= 504) return true;
-            return false;
-        }
-
-        // Fallback: string-match the exception message when no status code is available.
-        var message = ex.Message ?? "";
-        return message.Contains("429")
-            || message.Contains("529")
-            || message.Contains("Too Many Requests", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("overloaded", StringComparison.OrdinalIgnoreCase)
-            || (message.Contains("500") || message.Contains("502")
-                || message.Contains("503") || message.Contains("504"));
     }
 
     private string ResolvePath(string path)

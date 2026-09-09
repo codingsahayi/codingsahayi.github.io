@@ -17,14 +17,14 @@ public sealed partial class DiffReviewDialog : ContentDialog
         this.PrimaryButtonClick += (s, e) => { IsAccepted = true; };
     }
 
-    private void Accept_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    private void AcceptButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         // Accept the diff and close the dialog.
         IsAccepted = true;
         Hide();
     }
 
-    private void Reject_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    private void RejectButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         // Reject the diff and close the dialog.
         IsAccepted = false;

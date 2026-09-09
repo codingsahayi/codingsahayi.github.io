@@ -49,6 +49,7 @@ public sealed partial class MainWindow : Window
     private CancellationTokenSource? _searchCts;
     
     private int? _activeConversationId = null;
+    private int? _selectedProjectId = null;
 
     private async void CopyMessage_Click(object sender, RoutedEventArgs e)
     {
@@ -85,22 +86,11 @@ public sealed partial class MainWindow : Window
             ContextChipsControl.Visibility = AttachedFiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         };
 
+        // Rely entirely on EF Core's EnsureCreated() to generate the schema matching
+        // DataModels.cs — the previous raw CREATE TABLE blocks duplicated (and could
+        // conflict with) the model mapping. Do not hand-create tables here.
         using var db = new CodingSahayi.Data.AppDbContext();
         db.Database.EnsureCreated();
-        
-        try 
-        {
-            db.Database.ExecuteSqlRaw(@"
-                CREATE TABLE IF NOT EXISTS ""ProjectKnowledgeBase"" (
-                    ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_ProjectKnowledgeBase"" PRIMARY KEY AUTOINCREMENT,
-                    ""ProjectId"" INTEGER NOT NULL,
-                    ""TaskDescription"" TEXT NOT NULL,
-                    ""LearnedImplementation"" TEXT NOT NULL,
-                    ""DateLearned"" TEXT NOT NULL
-                );
-            ");
-        } 
-        catch { }
         
         LoadProjects();
     }
@@ -164,6 +154,15 @@ public sealed partial class MainWindow : Window
         {
             ProjectNav.SelectedItem = ProjectNav.MenuItems[0];
         }
+    }
+
+    /// <summary>
+    /// Rebuilds the project tree in the navigation sidebar. Used after auto-creating a
+    /// conversation so the new entry appears under its project immediately.
+    /// </summary>
+    private void RefreshProjectNavigation()
+    {
+        LoadProjects();
     }
 
     public void RefreshModelDropdown()
@@ -272,28 +271,44 @@ public sealed partial class MainWindow : Window
             }
 
             CodingSahayi.Data.Project? activeProject = null;
-            _activeConversationId = null;
-            
+
             if (navItem.Tag is CodingSahayi.Data.Project p)
             {
+                // --- Project selected: track it and load its LATEST conversation ---
                 activeProject = p;
-                
-                // Try to select the first conversation if we just clicked a project
-                var firstConv = p.Conversations?.FirstOrDefault();
-                if (firstConv != null)
+                _selectedProjectId = p.Id;
+
+                using var db = new CodingSahayi.Data.AppDbContext();
+                var latestConv = db.Conversations
+                    .Where(c => c.ProjectId == p.Id)
+                    .OrderByDescending(c => c.UpdatedAt)
+                    .FirstOrDefault();
+
+                if (latestConv != null)
                 {
-                    _activeConversationId = firstConv.Id;
+                    _activeConversationId = latestConv.Id;
+                    LoadConversationHistory();
+                }
+                else
+                {
+                    // No conversations yet — fresh canvas, auto-create on first prompt.
+                    _activeConversationId = null;
+                    ChatHistory.Clear();
+                    ChatHistory.Add(new TextMessageModel { Role = "Agent", Content = "Start a new conversation with this project.", Alignment = HorizontalAlignment.Left, BackgroundBrush = AgentBrush });
                 }
             }
             else if (navItem.Tag is int convId)
             {
+                // --- Specific conversation selected ---
                 _activeConversationId = convId;
                 using var db = new CodingSahayi.Data.AppDbContext();
-                var conv = db.Conversations.FirstOrDefault(c => c.Id == convId);
+                var conv = db.Conversations.Include(c => c.Project).FirstOrDefault(c => c.Id == convId);
                 if (conv != null)
                 {
-                    activeProject = db.Projects.FirstOrDefault(pr => pr.Id == conv.ProjectId);
+                    activeProject = conv.Project ?? db.Projects.FirstOrDefault(pr => pr.Id == conv.ProjectId);
+                    _selectedProjectId = conv.ProjectId;
                 }
+                LoadConversationHistory();
             }
 
             if (activeProject != null)
@@ -301,8 +316,6 @@ public sealed partial class MainWindow : Window
                 _agentManager.WorkspaceDirectory = activeProject.WorkspacePath;
                 WorkspacePathText.Text = activeProject.WorkspacePath;
             }
-            
-            LoadConversationHistory();
         }
     }
 
@@ -367,12 +380,17 @@ public sealed partial class MainWindow : Window
             var newConv = new CodingSahayi.Data.Conversation
             {
                 Title = "New Conversation",
-                UpdatedAt = DateTime.Now,
+                UpdatedAt = DateTime.UtcNow,
                 ProjectId = activeProject.Id
             };
             db.Conversations.Add(newConv);
             db.SaveChanges();
-            
+
+            // CRITICAL: capture the new conversation's Id so subsequent message
+            // saves (user + agent) persist to THIS conversation. Without this the
+            // _activeConversationId guard stays null and messages are silently dropped.
+            _activeConversationId = newConv.Id;
+
             LoadProjects();
             ClearChat_Click(this, new RoutedEventArgs());
         }
@@ -578,21 +596,98 @@ public sealed partial class MainWindow : Window
 
         ChatHistory.Add(new TextMessageModel { Role = "User", Content = userText, Alignment = HorizontalAlignment.Right, BackgroundBrush = UserBrush });
         
-        if (_activeConversationId.HasValue)
+        // AUTO-CREATE GUARD: if no conversation is active (e.g. the user started typing
+        // with nothing selected), create one under the active/default project and save the
+        // user prompt in the SAME transaction BEFORE any processing. This guarantees every
+        // user message persists even with no prior selection.
+        bool conversationAutoCreated = false;
+        if (!_activeConversationId.HasValue)
         {
-            using var db = new CodingSahayi.Data.AppDbContext();
-            db.ChatMessages.Add(new CodingSahayi.Data.ChatMessageEntity
+            try
             {
-                ConversationId = _activeConversationId.Value,
-                Role = "User",
-                Content = fullMessageToAI,
-                Timestamp = DateTime.UtcNow
-            });
-            
-            var conv = db.Conversations.Find(_activeConversationId.Value);
-            if (conv != null) conv.UpdatedAt = DateTime.UtcNow;
-            
-            db.SaveChanges();
+                using var db = new CodingSahayi.Data.AppDbContext();
+
+                // 1. Resolve the project — active selection, or the first project, or create "Default Project".
+                int projectId = _selectedProjectId ?? db.Projects.Select(p => p.Id).FirstOrDefault();
+                if (projectId == 0)
+                {
+                    var defaultProj = new CodingSahayi.Data.Project
+                    {
+                        Name = "Default Project",
+                        WorkspacePath = _agentManager.WorkspaceDirectory ?? "",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    db.Projects.Add(defaultProj);
+                    db.SaveChanges();
+                    projectId = defaultProj.Id;
+                    _selectedProjectId = projectId;
+                }
+
+                // 2. Auto-generate a conversation title from the prompt.
+                string convTitle = userText.Trim();
+                if (convTitle.Length > 28)
+                    convTitle = convTitle.Substring(0, 25) + "...";
+                if (string.IsNullOrWhiteSpace(convTitle))
+                    convTitle = "New Conversation";
+
+                var newConv = new CodingSahayi.Data.Conversation
+                {
+                    Title = convTitle,
+                    ProjectId = projectId,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                db.Conversations.Add(newConv);
+                db.SaveChanges();
+
+                _activeConversationId = newConv.Id;
+
+                // 3. Persist the user prompt within the SAME scope, so a sidebar refresh
+                //    reloads the message too (it is already committed to disk here).
+                db.ChatMessages.Add(new CodingSahayi.Data.ChatMessageEntity
+                {
+                    ConversationId = newConv.Id,
+                    Role = "User",
+                    Content = fullMessageToAI,
+                    Timestamp = DateTime.UtcNow
+                });
+                db.SaveChanges();
+
+                conversationAutoCreated = true;
+                System.Diagnostics.Debug.WriteLine($"[DB] Auto-created conversation {newConv.Id} + saved user message");
+
+                // Refresh the sidebar so the new conversation appears in the project tree.
+                RefreshProjectNavigation();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DB ERROR] Failed to auto-create conversation: {ex}");
+            }
+        }
+
+        // Save the user prompt (skip when the auto-create path already persisted it).
+        if (!conversationAutoCreated && _activeConversationId.HasValue)
+        {
+            try
+            {
+                using var db = new CodingSahayi.Data.AppDbContext();
+                db.ChatMessages.Add(new CodingSahayi.Data.ChatMessageEntity
+                {
+                    ConversationId = _activeConversationId.Value,
+                    Role = "User",
+                    Content = fullMessageToAI,
+                    Timestamp = DateTime.UtcNow
+                });
+
+                var conv = db.Conversations.Find(_activeConversationId.Value);
+                if (conv != null) conv.UpdatedAt = DateTime.UtcNow;
+
+                db.SaveChanges();
+                System.Diagnostics.Debug.WriteLine($"[DB] Saved user message to conversation {_activeConversationId.Value}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DB ERROR] Failed to save user message: {ex}");
+            }
         }
         
         AttachedFiles.Clear();
@@ -668,19 +763,27 @@ public sealed partial class MainWindow : Window
                 
                 if (_activeConversationId.HasValue)
                 {
-                    using var db = new CodingSahayi.Data.AppDbContext();
-                    db.ChatMessages.Add(new CodingSahayi.Data.ChatMessageEntity
+                    try
                     {
-                        ConversationId = _activeConversationId.Value,
-                        Role = "Agent",
-                        Content = finalResponse,
-                        Timestamp = DateTime.UtcNow
-                    });
-                    
-                    var conv = db.Conversations.Find(_activeConversationId.Value);
-                    if (conv != null) conv.UpdatedAt = DateTime.UtcNow;
-                    
-                    db.SaveChanges();
+                        using var db = new CodingSahayi.Data.AppDbContext();
+                        db.ChatMessages.Add(new CodingSahayi.Data.ChatMessageEntity
+                        {
+                            ConversationId = _activeConversationId.Value,
+                            Role = "Agent",
+                            Content = finalResponse,
+                            Timestamp = DateTime.UtcNow
+                        });
+
+                        var conv = db.Conversations.Find(_activeConversationId.Value);
+                        if (conv != null) conv.UpdatedAt = DateTime.UtcNow;
+
+                        db.SaveChanges();
+                        System.Diagnostics.Debug.WriteLine($"[DB] Saved agent reply to conversation {_activeConversationId.Value}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DB ERROR] Failed to save agent reply: {ex}");
+                    }
                 }
             }
 

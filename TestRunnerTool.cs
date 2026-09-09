@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -17,77 +18,44 @@ public static class TestRunnerTool
         
         if (result.Contains("Failed"))
         {
-            return ExtractFailures(result);
+            return ExtractTestFailures(result);
         }
 
         return $"Test execution completed with unexpected output:\n{result}";
     }
 
     /// <summary>
-    /// Parses modern VSTest output (dotnet test) into structured per-test failure blocks.
-    /// Extracts test name, the failure/error message, and the stack trace using regex,
-    /// falling back to the last 30 output lines when no block could be parsed.
+    /// Parses modern <c>dotnet test</c> console output and extracts structured per-test failure
+    /// blocks (<c>Failed &lt;TestName&gt;</c> + <c>Error Message:</c> + <c>Stack Trace:</c>) instead of
+    /// dumping the raw console stream. If no failure block can be parsed, it falls back to the
+    /// last 35 non-empty output lines for context.
     /// </summary>
-    private static string ExtractFailures(string result)
+    public static string ExtractTestFailures(string rawOutput)
     {
-        // Failures appear in two common VSTest shapes:
-        //   A)  Failed test_name [x ms]
-        //       Error Message:
-        //        <message>
-        //       Stack Trace:
-        //        <trace>
-        //   B)  Failed!  - Failed: N, Passed: M...
-        var blocks = Regex.Matches(result,
-            @"^\s*Failed\s+([^\r\n\[\]]+?)(?:\s*\[[\d.]+\s*ms\])?\s*\r?\n(?:.*?Error Message:\s*\r?\n(.*?))?(?:Stack Trace:\s*\r?\n(.*?))?(?=\r?\n\s*Failed\s+|$)",
-            RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        var failurePattern = new Regex(
+            @"Failed\s+([^\r\n\[]+).*?Error Message:\s*([^\r\n]+).*?Stack Trace:\s*([^\r\n]+)",
+            RegexOptions.Singleline | RegexOptions.Multiline);
 
-        var allNames = Regex.Matches(result, @"Failed\s+([^\r\n\[\]]+?)(?:\s*\[[\d.]+\s*ms\])?\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase)
-            .Select(m => m.Groups[1].Value.Trim())
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Distinct()
-            .ToList();
+        string output = rawOutput ?? string.Empty;
+        var matches = failurePattern.Matches(output);
 
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Test Failures Detected:");
+        // No structured failure blocks found — fall back to the last 35 output lines.
+        if (matches.Count == 0)
+        {
+            var lines = output.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            var tail = lines.Length <= 35 ? lines : lines[^35..];
+            return string.Join("\n", tail);
+        }
 
+        var sb = new StringBuilder();
+        sb.AppendLine($"Critic extracted {matches.Count} failing assertion(s):");
         int index = 1;
-        foreach (Match block in blocks)
+        foreach (Match match in matches)
         {
-            string testName = block.Groups[1].Value.Trim();
-            string message = block.Groups[2].Success ? block.Groups[2].Value.Trim() : "";
-            string trace = block.Groups[3].Success ? block.Groups[3].Value.Trim() : "";
-
-            sb.AppendLine($"{index}. {testName}");
-            if (!string.IsNullOrEmpty(message))
-                sb.AppendLine($"   Assertion: {message}");
-            if (!string.IsNullOrEmpty(trace))
-                sb.AppendLine($"   Trace: {trace}");
-            index++;
+            sb.AppendLine($"{index++}. Test: {match.Groups[1].Value.Trim()}");
+            sb.AppendLine($"   Error: {match.Groups[2].Value.Trim()}");
+            sb.AppendLine($"   Trace: {match.Groups[3].Value.Trim()}");
         }
-
-        // If the regex produced no per-block capture, fall back to naming the failed
-        // tests we saw, plus a trailing slice of the raw output for context.
-        if (index == 1)
-        {
-            if (allNames.Count > 0)
-            {
-                foreach (var name in allNames)
-                {
-                    sb.AppendLine($"{index}. {name}");
-                    index++;
-                }
-            }
-            else
-            {
-                // Last-resort fallback: last 30 lines of raw output.
-                var lines = result.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
-                var tail = lines.Skip(Math.Max(0, lines.Count - 30)).ToList();
-                sb.AppendLine("(Could not parse per-test failure blocks. Raw output tail:)");
-                foreach (var line in tail)
-                    sb.AppendLine("   " + line);
-            }
-        }
-
         return sb.ToString();
     }
 }
