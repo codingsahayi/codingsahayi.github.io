@@ -155,7 +155,7 @@
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <Button x:Name="TestConnectionBtn" Grid.Column="0" Click="TestConnection_Click">
+                                        <Button x:Name="TestConnectionButton" Grid.Column="0" Click="TestConnectionButton_Click">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <FontIcon Glyph="&#xE9D9;" FontSize="14" Foreground="#0078D4" />
                                                 <TextBlock Text="Test Connection" Foreground="#0078D4" />
@@ -170,6 +170,14 @@
                                         <Button Grid.Column="2" Content="Cancel" Click="CancelEditModel_Click" Margin="0,0,8,0" VerticalAlignment="Bottom" />
                                         <Button Grid.Column="3" Content="Save Provider" Style="{StaticResource AccentButtonStyle}" Click="SaveModel_Click" VerticalAlignment="Bottom" />
                                     </Grid>
+
+                                    <!-- Real connection-test result indicator -->
+                                    <InfoBar x:Name="TestConnectionInfoBar"
+                                             IsOpen="False"
+                                             Severity="Informational"
+                                             Title="Test Connection"
+                                             Message=""
+                                             CornerRadius="6" />
                                 </StackPanel>
                             </StackPanel>
                         </toolkit:SettingsCard>

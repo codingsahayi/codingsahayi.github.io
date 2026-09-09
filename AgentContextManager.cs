@@ -161,7 +161,13 @@ public class AgentContextManager
         var endpoint = config.BaseUrl;
         if (!endpoint.EndsWith("/")) endpoint += "/";
         var options = new OpenAIClientOptions { Endpoint = new Uri(endpoint), NetworkTimeout = TimeSpan.FromMinutes(10) };
-        var client = new OpenAIClient(new System.ClientModel.ApiKeyCredential(config.ApiKey ?? ""), options);
+
+        // The SDK enforces a non-empty key. Local endpoints (Ollama/LM Studio) need none,
+        // so fall back to a benign placeholder to avoid 'Value cannot be an empty string'
+        // from System.ClientModel.ApiKeyCredential.
+        string effectiveKey = string.IsNullOrWhiteSpace(config.ApiKey) ? "ollama" : config.ApiKey;
+
+        var client = new OpenAIClient(new System.ClientModel.ApiKeyCredential(effectiveKey), options);
         return client.GetChatClient(config.ModelIdentifier);
     }
 

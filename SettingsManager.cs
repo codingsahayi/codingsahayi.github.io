@@ -87,33 +87,116 @@ public static class SettingsManager
         set => LocalSettings.Values["SoupBaseModel"] = value;
     }
 
+    private const string ModelKeyResource = "CodingSahayi_ModelKey";
+
     public static List<CodingSahayi.Data.ModelEndpointConfig> ConfiguredModels
     {
         get
         {
             List<CodingSahayi.Data.ModelEndpointConfig> list = new();
             var json = LocalSettings.Values["ConfiguredModels"] as string;
-            
+
             if (!string.IsNullOrEmpty(json))
             {
                 try { list = JsonSerializer.Deserialize<List<CodingSahayi.Data.ModelEndpointConfig>>(json) ?? new(); }
                 catch { }
             }
-            
-            // Deduplicate by BaseUrl and ModelIdentifier
-            list = list.GroupBy(x => new { x.BaseUrl, x.ModelIdentifier })
-                       .Select(g => g.First())
-                       .ToList();
-            
+
+            // Hydrate each model's API key from the secure PasswordVault (keys are NOT in JSON).
+            foreach (var config in list)
+            {
+                config.ApiKey = GetModelApiKey(config.Id);
+            }
+
+            // Write back default seeded entries to LocalSettings if the list was empty.
             if (list.Count == 0)
             {
                 list.Add(new CodingSahayi.Data.ModelEndpointConfig { DisplayName = "Ollama Local", ModelIdentifier = "gemma4:26b", BaseUrl = "http://localhost:11434/v1", Type = CodingSahayi.Data.ModelType.Local, CostTier = CodingSahayi.Data.CostTier.Local, Priority = 1 });
                 list.Add(new CodingSahayi.Data.ModelEndpointConfig { DisplayName = "Claude 3.5 Sonnet", ModelIdentifier = "anthropic/claude-3.5-sonnet-20240620", BaseUrl = "https://openrouter.ai/api/v1", Type = CodingSahayi.Data.ModelType.Cloud, CostTier = CodingSahayi.Data.CostTier.Paid, Priority = 2 });
+                LocalSettings.Values["ConfiguredModels"] = JsonSerializer.Serialize(list);
             }
-            
+
             return list;
         }
-        set => LocalSettings.Values["ConfiguredModels"] = JsonSerializer.Serialize(value);
+        set
+        {
+            // Store each model's API key securely in PasswordVault before serializing.
+            var models = value ?? new List<CodingSahayi.Data.ModelEndpointConfig>();
+            foreach (var model in models)
+            {
+                StoreModelApiKey(model.Id, model.ApiKey);
+            }
+            LocalSettings.Values["ConfiguredModels"] = JsonSerializer.Serialize(models);
+        }
+    }
+
+    /// <summary>
+    /// Stores a provider API key in the Windows PasswordVault, keyed by the provider's
+    /// model <paramref name="modelId"/>. Replaces any existing credential and removes the
+    /// stored key when <paramref name="apiKey"/> is empty.
+    /// </summary>
+    public static void StoreModelApiKey(string modelId, string apiKey)
+    {
+        if (string.IsNullOrWhiteSpace(modelId) || string.IsNullOrWhiteSpace(apiKey))
+        {
+            if (string.IsNullOrWhiteSpace(apiKey))
+                RemoveModelApiKey(modelId);
+            return;
+        }
+
+        var vault = new PasswordVault();
+        try
+        {
+            // Remove any existing credential for this model first (Add throws on duplicates).
+            var existing = vault.Retrieve(ModelKeyResource, modelId);
+            if (existing != null)
+                vault.Remove(existing);
+        }
+        catch { /* no existing credential */ }
+
+        try
+        {
+            vault.Add(new PasswordCredential(ModelKeyResource, modelId, apiKey));
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Reads a provider API key from the PasswordVault; returns <see cref="string.Empty"/>
+    /// if no credential exists (or on any exception).
+    /// </summary>
+    public static string GetModelApiKey(string modelId)
+    {
+        if (string.IsNullOrWhiteSpace(modelId)) return string.Empty;
+
+        var vault = new PasswordVault();
+        try
+        {
+            var credential = vault.Retrieve(ModelKeyResource, modelId);
+            credential.RetrievePassword();
+            return credential.Password;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Removes a provider API key from the PasswordVault if it exists.
+    /// </summary>
+    public static void RemoveModelApiKey(string modelId)
+    {
+        if (string.IsNullOrWhiteSpace(modelId)) return;
+
+        var vault = new PasswordVault();
+        try
+        {
+            var credential = vault.Retrieve(ModelKeyResource, modelId);
+            if (credential != null)
+                vault.Remove(credential);
+        }
+        catch { /* no existing credential */ }
     }
 
     // EnsureModelInList removed as model config is now object-based

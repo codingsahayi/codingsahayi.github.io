@@ -59,6 +59,9 @@ namespace CodingSahayi.Data
         public string DisplayName { get; set; } = string.Empty;
         public string ModelIdentifier { get; set; } = string.Empty; // e.g., "meta/llama-3.1-70b-instruct" or "gemma4:26b"
         public string BaseUrl { get; set; } = "http://localhost:11434/v1";
+        // API keys are NOT serialized into the LocalSettings JSON blob — they are
+        // stored securely in Windows PasswordVault keyed by the model's Id.
+        [System.Text.Json.Serialization.JsonIgnore]
         public string ApiKey { get; set; } = string.Empty;
         public ModelType Type { get; set; } = ModelType.Local;
         public CostTier CostTier { get; set; } = CostTier.Local;

@@ -57,7 +57,7 @@ public sealed partial class SettingsPage : Page
         EditIsEnabled.IsOn = true;
         EditIsDefault.IsOn = false;
         EditAllowFallback.IsOn = true;
-        TestResultBorder.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+        TestConnectionInfoBar.IsOpen = false;
         
         ModelEditorPanel.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
     }
@@ -78,7 +78,7 @@ public sealed partial class SettingsPage : Page
             EditIsEnabled.IsOn = model.IsEnabled;
             EditIsDefault.IsOn = model.IsDefault;
             EditAllowFallback.IsOn = model.AllowFallback;
-            TestResultBorder.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            TestConnectionInfoBar.IsOpen = false;
             
             ModelEditorPanel.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
         }
@@ -89,6 +89,14 @@ public sealed partial class SettingsPage : Page
         if (sender is Button btn && btn.CommandParameter is CodingSahayi.Data.ModelEndpointConfig model)
         {
             _models.Remove(model);
+
+            // Persist immediately (not deferred to OnNavigatedFrom) and purge the
+            // provider's secret from the PasswordVault.
+            SettingsManager.ConfiguredModels = _models.ToList();
+            SettingsManager.RemoveModelApiKey(model.Id);
+
+            ModelsListView.ItemsSource = null;
+            ModelsListView.ItemsSource = _models;
         }
     }
 
@@ -120,11 +128,21 @@ public sealed partial class SettingsPage : Page
             }
         }
         
+        // Persist immediately (not deferred to OnNavigatedFrom) so the provider and its
+        // API key survive an app restart without navigating away.
+        SettingsManager.ConfiguredModels = _models.ToList();
+
+        // Hide the editor and refresh the Providers list, then sync the MainWindow dropdown.
         ModelEditorPanel.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
-        
-        // Refresh ListView
+
         ModelsListView.ItemsSource = null;
         ModelsListView.ItemsSource = _models;
+
+        // Trigger a dropdown refresh so the new/edited model appears in the MainWindow selector.
+        if (Microsoft.UI.Xaml.Application.Current is App app && app._window is MainWindow mw)
+        {
+            mw.RefreshModelDropdown();
+        }
     }
 
     private void CancelEditModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -132,26 +150,81 @@ public sealed partial class SettingsPage : Page
         ModelEditorPanel.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
     }
 
-    private async void TestConnection_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    private async void TestConnectionButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        TestResultBorder.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
-        TestConnectionBtn.IsEnabled = false;
+        TestConnectionInfoBar.IsOpen = false;
+        TestConnectionButton.IsEnabled = false;
+
         try
         {
-            await Task.Delay(800); // Simulate network
-            TestResultText.Text = "Connection successful! (Latency: 981ms)";
-            TestResultBorder.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 138, 56)); // Green
-            TestResultBorder.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+            // Read the current editor fields directly (don't rely on the saved model).
+            string endpoint = EditBaseUrl.Text?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(endpoint))
+                endpoint = "http://localhost:11434/v1";
+            string key = string.IsNullOrWhiteSpace(EditApiKey.Password) ? "ollama" : EditApiKey.Password.Trim();
+            string model = EditModelIdentifier.Text?.Trim() ?? "";
+
+            // Query the endpoint's /models list with a strict 5-second timeout.
+            string baseUrl = endpoint.TrimEnd('/');
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            using var http = new System.Net.Http.HttpClient();
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+            http.Timeout = TimeSpan.FromSeconds(5);
+
+            string requestUrl = baseUrl + "/models";
+            var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, requestUrl);
+            if (!string.Equals(key, "ollama", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrWhiteSpace(EditApiKey.Password))
+            {
+                // Only send an auth header when a real key is configured.
+                request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + key);
+            }
+
+            var response = await http.SendAsync(request, cts.Token);
+            sw.Stop();
+
+            if (response.IsSuccessStatusCode)
+            {
+                string body = await response.Content.ReadAsStringAsync();
+                TestConnectionInfoBar.Severity = InfoBarSeverity.Success;
+                TestConnectionInfoBar.Message = $"Connection successful! Model endpoint reachable (HTTP {(int)response.StatusCode}, latency {sw.ElapsedMilliseconds} ms).";
+                TestConnectionInfoBar.IsOpen = true;
+            }
+            else
+            {
+                TestConnectionInfoBar.Severity = InfoBarSeverity.Error;
+                TestConnectionInfoBar.Message = $"Connection failed: Server returned HTTP {(int)response.StatusCode}.";
+                TestConnectionInfoBar.IsOpen = true;
+            }
         }
-        catch
+        catch (System.Net.Http.HttpRequestException ex)
         {
-            TestResultText.Text = "Connection failed.";
-            TestResultBorder.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 200, 0, 0)); // Red
-            TestResultBorder.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+            TestConnectionInfoBar.Severity = InfoBarSeverity.Error;
+            TestConnectionInfoBar.Message = "Cannot connect to server. Ensure Ollama/service is running on the specified port. (" + (ex.InnerException?.Message ?? ex.Message) + ")";
+            TestConnectionInfoBar.IsOpen = true;
+        }
+        catch (System.Threading.Tasks.TaskCanceledException)
+        {
+            TestConnectionInfoBar.Severity = InfoBarSeverity.Error;
+            TestConnectionInfoBar.Message = "Connection timed out after 5 seconds.";
+            TestConnectionInfoBar.IsOpen = true;
+        }
+        catch (System.ClientModel.ClientResultException ex)
+        {
+            TestConnectionInfoBar.Severity = InfoBarSeverity.Error;
+            TestConnectionInfoBar.Message = "Connection failed: " + ex.Message;
+            TestConnectionInfoBar.IsOpen = true;
+        }
+        catch (Exception ex)
+        {
+            TestConnectionInfoBar.Severity = InfoBarSeverity.Error;
+            TestConnectionInfoBar.Message = "Connection failed: " + ex.Message;
+            TestConnectionInfoBar.IsOpen = true;
         }
         finally
         {
-            TestConnectionBtn.IsEnabled = true;
+            TestConnectionButton.IsEnabled = true;
         }
     }
 
@@ -163,20 +236,43 @@ public sealed partial class SettingsPage : Page
         SettingsManager.SoupPath = SoupPathBox.Text?.Trim() ?? @"D:\Soup";
         SettingsManager.SoupBaseModel = SoupBaseModelBox.Text?.Trim() ?? "Qwen/Qwen2.5-Coder-1.5B";
 
-        // The training workspace lives under %LocalAppData%\CodingSahayi\FineTuning.
-        // Normalise it so no trailing slash ever survives into the process working directory.
-        string workspacePath = System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "CodingSahayi", "FineTuning").TrimEnd('\\', '/');
+        // RESOLVE A NON-VIRTUALIZED WORKSPACE.
+        // MSIX File System Virtualization redirects %LocalAppData% writes away from external
+        // Win32 tools (soup.exe / python), so a config written to the virtualized AppData path
+        // is invisible to the process. We therefore place artifacts on a plain disk location.
+        string workspacePath;
+        string soupRepo = SettingsManager.SoupPath?.Trim() ?? @"D:\Soup";
+        if (!string.IsNullOrWhiteSpace(soupRepo) && System.IO.Directory.Exists(soupRepo))
+        {
+            // Configured Soup repo is present — locate the workspace inside it.
+            workspacePath = System.IO.Path.Combine(soupRepo, "workspace");
+        }
+        else if (System.IO.Directory.Exists(@"D:\"))
+        {
+            // Fallback to a plain (non-AppData) location on the D: drive.
+            workspacePath = @"D:\CodingSahayi\FineTuning";
+        }
+        else
+        {
+            // Last-resort fallback under the user profile (still outside virtualized AppData).
+            workspacePath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".codingsahayi", "FineTuning");
+        }
+        workspacePath = workspacePath.TrimEnd('\\', '/');
 
         // Soup CLI searches for a config relative to its working directory. To cover both
         // the ".soup/" sub-directory and the workspace root, we write the config to BOTH.
-        var soupDir = System.IO.Path.Combine(workspacePath, ".soup");
-        if (!System.IO.Directory.Exists(soupDir))
-            System.IO.Directory.CreateDirectory(soupDir);
+        // Ensure the non-virtualized directory structure exists first.
+        var dotSoupDir = System.IO.Path.Combine(workspacePath, ".soup");
+        if (!System.IO.Directory.Exists(workspacePath))
+            System.IO.Directory.CreateDirectory(workspacePath);
+        if (!System.IO.Directory.Exists(dotSoupDir))
+            System.IO.Directory.CreateDirectory(dotSoupDir);
 
-        var datasetPath = System.IO.Path.Combine(soupDir, "dataset.jsonl");
-        var configPath  = System.IO.Path.Combine(soupDir, "soup.yaml");
+        // Artifact paths all live in the non-virtualized workspace.
+        var datasetPath = System.IO.Path.Combine(workspacePath, "dataset.jsonl");
+        var configPath  = System.IO.Path.Combine(dotSoupDir, "soup.yaml");
         var rootConfigPath = System.IO.Path.Combine(workspacePath, "soup.yaml");
 
         // Initialise the terminal buffer so diagnostics stream visibly.
