@@ -178,6 +178,29 @@ public sealed partial class MainWindow : Window
         ModelSelector.SelectedItem = SettingsManager.ModelName;
     }
 
+    /// <summary>
+    /// Resolves the active inference config strictly from the bottom dropdown selection.
+    /// "Hybrid Router (Auto)" is a special value that lets the existing router pick; any
+    /// specific provider resolves to its ModelEndpointConfig so inference never silently
+    /// falls back to an unauthenticated cloud endpoint (which produced 401 errors).
+    /// </summary>
+    private CodingSahayi.Data.ModelEndpointConfig? ResolveActiveModelFromDropdown()
+    {
+        var selectedItem = ModelSelector.SelectedItem as string;
+
+        // The router is an explicit choice — let the hybrid router decide (local-first).
+        if (string.IsNullOrWhiteSpace(selectedItem) || selectedItem == "Hybrid Router (Auto)")
+            return null;
+
+        // Match by DisplayName prefix (dropdown label is "DisplayName (CostTier | PPriority)").
+        var activeModel = SettingsManager.ConfiguredModels
+            .FirstOrDefault(m => selectedItem.StartsWith(m.DisplayName, StringComparison.OrdinalIgnoreCase))
+            ?? SettingsManager.ConfiguredModels.FirstOrDefault(m => m.IsDefault && m.IsEnabled)
+            ?? SettingsManager.ConfiguredModels.FirstOrDefault(m => m.IsEnabled);
+
+        return activeModel;
+    }
+
     private void DeleteNavItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is MenuFlyoutItem menuItem)
@@ -710,6 +733,15 @@ public sealed partial class MainWindow : Window
         StatusText.Text = "Thinking...";
 
         var token = _cts.Token;
+
+        // Resolve the active model strictly from the bottom dropdown selection. This prevents
+        // silent fallback to an unauthenticated cloud endpoint (which caused 401 errors).
+        var activeModel = ResolveActiveModelFromDropdown();
+        if (activeModel != null)
+        {
+            StatusText.Text = $"Using {activeModel.DisplayName}...";
+        }
+
         string finalResponse = await _agentManager.ProcessMessageAsync(
             fullMessageToAI, 
             (status) =>
@@ -749,7 +781,9 @@ public sealed partial class MainWindow : Window
                     }
                 });
             },
-            cancellationToken: token
+            cancellationToken: token,
+            explicitConfig: activeModel,
+            forceDirect: activeModel != null
         );
 
         DispatcherQueue.TryEnqueue(() =>

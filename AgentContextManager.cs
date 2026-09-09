@@ -23,6 +23,14 @@ public class AgentContextManager
 
     private readonly string _systemPrompt;
 
+    // Neutral local identity injected for direct single-model (local) execution, so the model
+    // never leaks a cloud assistant persona ("You are ChatGPT...") and identifies as the local
+    // Coding Sahayi / Qwen assistant.
+    private const string LocalSystemPrompt =
+        "You are Coding Sahayi, an expert local AI software engineering assistant powered by Qwen. " +
+        "You run entirely on the user's machine via the Ollama local endpoint. Be concise, accurate, " +
+        "and deliver production-ready code.";
+
     public AgentContextManager(string systemPrompt = null, IEnumerable<string> allowedTools = null)
     {
         _systemPrompt = systemPrompt ?? SettingsManager.SystemPrompt;
@@ -253,7 +261,9 @@ public class AgentContextManager
         ToolStartHandler onToolStart,
         ToolEndHandler onToolEnd,
         int maxIterations = 30,
-        System.Threading.CancellationToken cancellationToken = default)
+        System.Threading.CancellationToken cancellationToken = default,
+        CodingSahayi.Data.ModelEndpointConfig? explicitConfig = null,
+        bool forceDirect = false)
     {
         Serilog.Log.Information("ProcessMessageAsync started. User message length: {Length}", userMessage.Length);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -266,14 +276,53 @@ public class AgentContextManager
         string routeDecision = "API";
         CodingSahayi.Data.ModelEndpointConfig activeConfig = null;
         string currentModel = SettingsManager.ModelName;
+
+        // The caller (MainWindow dropdown) can supply an explicitly resolved config. When
+        // present AND forceDirect is set, this is an ABSOLUTE override: skip every pre-flight
+        // classifier / router / cloud "plan" call and stream the prompt end-to-end against this
+        // exact config. For local endpoints we pin the client to the local Ollama base URL.
+        if (explicitConfig != null && forceDirect)
+        {
+            activeConfig = explicitConfig;
+
+            bool isLocal = activeConfig.Type == CodingSahayi.Data.ModelType.Local ||
+                           activeConfig.BaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase);
+
+            // Pin local providers to the Ollama endpoint so the request is guaranteed to hit
+            // the local server, never an unauthenticated cloud route.
+            if (isLocal)
+            {
+                activeConfig.BaseUrl = "http://localhost:11434/v1";
+            }
+
+            // For local execution, override the injected system prompt with a neutral local
+            // identity so the model stays as "Coding Sahayi / Qwen" with no cloud persona leakage.
+            if (isLocal && _apiHistory.Count > 0 && _apiHistory[0] is SystemChatMessage)
+            {
+                _apiHistory[0] = new SystemChatMessage(LocalSystemPrompt);
+            }
+
+            routeDecision = isLocal ? "LOCAL" : "API";
+            onStatusUpdate($"Using {activeConfig.DisplayName} (direct)...");
+        }
+        else if (explicitConfig != null)
+        {
+            activeConfig = explicitConfig;
+            routeDecision = activeConfig.Type == CodingSahayi.Data.ModelType.Local ? "LOCAL" : "API";
+            onStatusUpdate($"Using {activeConfig.DisplayName}...");
+        }
         
-        if (currentModel == "Local Model Only")
+        // When forceDirect is active, skip ALL pre-flight routing/classification so the
+        // explicitly selected model handles the prompt end-to-end (no classifier "plan" call).
+        bool strictDirectActive = explicitConfig != null && forceDirect;
+
+        if (!strictDirectActive && currentModel == "Local Model Only")
         {
             routeDecision = "LOCAL";
             activeConfig = SettingsManager.ConfiguredModels.OrderBy(m => m.Priority).FirstOrDefault(m => m.Type == CodingSahayi.Data.ModelType.Local && m.IsEnabled);
             onStatusUpdate("Using LOCAL model...");
         }
-        else if (currentModel == "Hybrid Router (Auto)")
+        else if (!strictDirectActive && currentModel == "Hybrid Router (Auto)")
         {
             onStatusUpdate("Checking local model availability...");
             bool localAvailable = await IsLocalAvailableAsync();
@@ -323,7 +372,7 @@ public class AgentContextManager
                 onStatusUpdate("Local model offline, using CLOUD API...");
             }
         }
-        else
+        else if (!strictDirectActive)
         {
             onStatusUpdate("Using CLOUD API...");
             
@@ -614,6 +663,14 @@ public class AgentContextManager
 
                         if (fallback != null)
                         {
+                            // Do NOT fall back to a cloud model that has no API key — that would
+                            // produce a 401 (and violate the user's explicit model selection).
+                            if (fallback.Type != CodingSahayi.Data.ModelType.Local && string.IsNullOrWhiteSpace(fallback.ApiKey))
+                            {
+                                throw new InvalidOperationException(
+                                    $"Fallback model '{fallback.DisplayName}' requires an API key. Check Settings.");
+                            }
+
                             Serilog.Log.Warning(ex, "Primary model {ModelName} rate-limited/transient. Falling back to {FallbackName}", currentConfig.DisplayName, fallback.DisplayName);
                             onStatusUpdate($"Model {currentConfig.DisplayName} unavailable. Falling back to {fallback.DisplayName}...");
                             currentConfig = fallback;
