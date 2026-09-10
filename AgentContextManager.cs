@@ -793,15 +793,16 @@ public class AgentContextManager
                     
                     // Offload the diff computation off the UI thread to avoid stalling the
                     // dispatcher on large files. The dialog itself is shown on the UI thread.
-                    var diff = await Task.Run(() => DiffManager.GenerateDiff(oldText, newText));
+                    var diff = await Task.Run(() =>
+                        DiffManager.GenerateInlineDiff(oldText, newText));
                     var tcs = new TaskCompletionSource<bool>();
-                    
+
                     var dispatcher = (Microsoft.UI.Xaml.Application.Current as App)?._window?.DispatcherQueue;
                     if (dispatcher != null)
                     {
                         dispatcher.TryEnqueue(async () =>
                         {
-                            var dialog = new DiffReviewDialog(diff);
+                            var dialog = new DiffReviewDialog(wFilePath, diff);
                             dialog.XamlRoot = (Microsoft.UI.Xaml.Application.Current as App)?._window?.Content.XamlRoot;
                             await dialog.ShowAsync();
                             tcs.SetResult(dialog.IsAccepted);

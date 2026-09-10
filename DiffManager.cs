@@ -11,4 +11,13 @@ public static class DiffManager
         var diffBuilder = new SideBySideDiffBuilder(new Differ());
         return diffBuilder.BuildDiffModel(oldText ?? "", newText ?? "");
     }
+
+    /// <summary>
+    /// Builds an inline (unified) diff model for the VS Code-style diff inspector.
+    /// </summary>
+    public static DiffPaneModel GenerateInlineDiff(string oldText, string newText)
+    {
+        var builder = new InlineDiffBuilder(new Differ());
+        return builder.BuildDiffModel(oldText ?? "", newText ?? "");
+    }
 }
