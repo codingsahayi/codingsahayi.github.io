@@ -578,6 +578,111 @@
       *, *::before, *::after { transition: none !important; animation: none !important; }
       #canvas-container { opacity: .55; }
     }
+
+    /* Creator profile card */
+    .creator-card {
+      padding: 38px 34px;
+    }
+    .creator-grid {
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr);
+      gap: 32px;
+      align-items: center;
+    }
+    .creator-avatar-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .creator-avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 28px rgba(0, 240, 255, 0.3);
+      object-fit: cover;
+      background: #0a0f17;
+    }
+    .creator-badge {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: var(--cyan);
+      background: var(--cyan-soft);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 999px;
+      padding: 4px 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    .creator-name {
+      font-size: clamp(1.45rem, 2.5vw, 1.95rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: #f5fdff;
+    }
+    .creator-role {
+      margin-top: 4px;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .creator-quote {
+      margin-top: 16px;
+      font-size: clamp(1.05rem, 1.5vw, 1.2rem);
+      line-height: 1.62;
+      color: #dcebf0;
+      font-style: italic;
+    }
+    .creator-bio {
+      margin-top: 12px;
+      font-size: 0.92rem;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+    .creator-links {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .creator-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: #dffbff;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    }
+    .creator-link:hover {
+      border-color: var(--cyan);
+      background: var(--cyan-soft);
+      color: #ffffff;
+      transform: translateY(-2px);
+    }
+
+    @media (max-width: 680px) {
+      .creator-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .creator-avatar-wrap {
+        margin: 0 auto;
+      }
+      .creator-links {
+        justify-content: center;
+      }
+    }
   </style>
 </head>
 <body>
@@ -594,7 +699,7 @@
         <a href="#soup">Fine-Tuning (Soup)</a>
         <a href="#economics">Token Economics</a>
         <a href="https://github.com/codingsahayi/codingsahayi.github.io" target="_blank" rel="noreferrer">GitHub</a>
-        <a class="nav-cta" href="https://linktr.ee/muhammedshabeer" target="_blank" rel="noreferrer">Connect / Socials</a>
+        <a class="nav-cta" href="https://linktr.ee/muhammedshabeer" target="_blank" rel="noreferrer">Developer Profile ↗</a>
       </nav>
     </header>
 
@@ -853,16 +958,37 @@
         </div>
       </section>
 
-      <section class="section">
+      <section class="section" id="creator">
         <div class="shell">
-          <div class="note">
-            <div class="quote-mark">“</div>
-            <blockquote class="quote">
-              Building an entire desktop IDE from scratch has been an intense learning curve, but seeing the agent catch its own compiler bugs and fix them autonomously makes the late nights worth it.
-            </blockquote>
-            <p class="invite">
-              If you build developer tooling or work with local LLMs, I’d love to hear your thoughts on the architecture.
-            </p>
+          <div class="note creator-card">
+            <div class="creator-grid">
+              <div class="creator-avatar-wrap">
+                <img src="https://muhammedshabeer.github.io/MyPortfolio/assets/profile.png" alt="Muhammed Shabeer" class="creator-avatar" />
+                <span class="creator-badge">Creator &amp; Architect</span>
+              </div>
+              <div class="creator-details">
+                <div class="kicker">About the Developer</div>
+                <h3 class="creator-name">Muhammed Shabeer</h3>
+                <div class="creator-role">Partner &amp; CTO · Enterprise Solutions Architect</div>
+                <blockquote class="creator-quote">
+                  “Building an entire desktop IDE from scratch has been an intense learning curve, but seeing the agent catch its own compiler bugs and fix them autonomously makes the late nights worth it.”
+                </blockquote>
+                <p class="creator-bio">
+                  Operating from Doha, Qatar. Directing enterprise software platforms, autonomous AI developer tools, and cross-border systems architecture.
+                </p>
+                <div class="creator-links">
+                  <a href="https://linktr.ee/muhammedshabeer" target="_blank" rel="noreferrer" class="creator-link">
+                    Portfolio ↗
+                  </a>
+                  <a href="https://github.com/MuhammedShabeer" target="_blank" rel="noreferrer" class="creator-link">
+                    GitHub ↗
+                  </a>
+                  <a href="https://linkedin.com/in/muhammed-shabeer-" target="_blank" rel="noreferrer" class="creator-link">
+                    LinkedIn ↗
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -877,7 +1003,7 @@
           </div>
           <div class="footer-links">
             <a href="https://github.com/codingsahayi/codingsahayi.github.io" target="_blank" rel="noreferrer">GitHub Repository</a>
-            <a href="https://linktr.ee/muhammedshabeer" target="_blank" rel="noreferrer">Developer Socials</a>
+            <a href="https://linktr.ee/muhammedshabeer" target="_blank" rel="noreferrer">Muhammed Shabeer</a>
             <a href="#architecture">Documentation</a>
           </div>
         </div>
