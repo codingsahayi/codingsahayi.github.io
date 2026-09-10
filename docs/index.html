@@ -144,7 +144,7 @@
     }
     .nav .nav-cta:hover, .nav .nav-cta:focus-visible { color: #001114; background: #63f7ff; }
 
-    .hero { min-height: 84vh; display: grid; place-items: center; padding: 116px 0 84px; }
+    .hero { min-height: 84vh; display: grid; place-items: center; padding: 116px 0 64px; }
     .hero-inner { text-align: center; }
     .eyebrow {
       display: inline-flex;
@@ -225,7 +225,7 @@
       grid-template-columns: repeat(4, minmax(0,1fr));
       gap: 10px;
       max-width: 920px;
-      margin: 54px auto 0;
+      margin: 42px auto 0;
     }
     .meta-item {
       padding: 14px;
@@ -241,6 +241,31 @@
       text-transform: uppercase;
     }
     .meta-v { margin-top: 7px; color: #dffbff; font: 800 .84rem/1.2 var(--mono); }
+
+    /* Modernized screenshot containers */
+    .screenshot-wrapper {
+      margin-top: 20px;
+      border: 1px solid rgba(0, 240, 255, 0.18);
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(4, 7, 12, 0.85);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+      transition: border-color 0.25s ease, transform 0.25s ease;
+    }
+    .screenshot-wrapper:hover {
+      border-color: rgba(0, 240, 255, 0.42);
+      transform: translateY(-2px);
+    }
+    .screenshot-wrapper img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .hero-showcase {
+      max-width: 1060px;
+      margin: 48px auto 0;
+    }
 
     .section { padding: 110px 0; }
     .section-head {
@@ -275,7 +300,7 @@
     }
 
     .compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .compare-panel { position: relative; min-height: 390px; padding: 30px; }
+    .compare-panel { position: relative; min-height: 390px; padding: 30px; display: flex; flex-direction: column; justify-content: space-between; }
     .compare-panel + .compare-panel { border-left: 1px solid var(--border); }
     .compare-panel.old {
       background:
@@ -460,25 +485,6 @@
     .suite-card h3 { margin-top: 22px; font-size: 1.16rem; }
     .suite-card p { margin-top: 10px; color: var(--muted); line-height: 1.7; font-size: .93rem; }
 
-    .screenshot-wrapper {
-      margin-top: 20px;
-      border: 1px solid rgba(0, 240, 255, 0.18);
-      border-radius: 14px;
-      overflow: hidden;
-      background: rgba(4, 7, 12, 0.85);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
-      transition: border-color 0.25s ease, transform 0.25s ease;
-    }
-    .screenshot-wrapper:hover {
-      border-color: rgba(0, 240, 255, 0.42);
-      transform: translateY(-2px);
-    }
-    .screenshot-wrapper img {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-
     .note {
       position: relative;
       padding: 42px 34px;
@@ -593,6 +599,7 @@
     </header>
 
     <main>
+      <!-- HERO SECTION with IDE Preview -->
       <section class="hero">
         <div class="shell">
           <div class="hero-inner">
@@ -607,16 +614,25 @@
               <a class="button button-primary" href="https://github.com/codingsahayi/codingsahayi.github.io" target="_blank" rel="noreferrer">View on GitHub ↗</a>
               <a class="button button-secondary" href="#swarm">Explore Architecture ↓</a>
             </div>
+
             <div class="hero-meta" aria-label="Core stack">
               <div class="meta-item"><div class="meta-k">UI</div><div class="meta-v">WinUI 3</div></div>
               <div class="meta-item"><div class="meta-k">Runtime</div><div class="meta-v">.NET 8 / C#</div></div>
               <div class="meta-item"><div class="meta-k">Local AI</div><div class="meta-v">Ollama / LM Studio</div></div>
               <div class="meta-item"><div class="meta-k">Memory</div><div class="meta-v">EF Core + SQLite</div></div>
             </div>
+
+            <!-- Screenshot 1: IDE Front Workspace -->
+            <div class="hero-showcase">
+              <div class="screenshot-wrapper">
+                <img src="screenshots/ide-front.png" alt="Coding Sahayi WinUI 3 Desktop Workspace" loading="eager" />
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
+      <!-- SECTION 01: Token Economics & Local Endpoint Setup -->
       <section class="section" id="economics">
         <div class="shell">
           <div class="section-head">
@@ -631,44 +647,50 @@
           </div>
           <div class="surface compare">
             <article class="compare-panel old">
-              <div class="panel-top">
-                <span class="panel-tag">The Old Way</span>
-                <span class="panel-tag">Cloud API Drain</span>
-              </div>
-              <h3 class="panel-title">Monolithic prompts + paid retries.</h3>
-              <p class="panel-copy">
-                Entire repositories become prompt context. Failed compile attempts become paid token churn.
-                Rate limits interrupt the loop, while the local workstation retains little durable learning.
-              </p>
-              <div class="bullet-list">
-                <div class="bullet"><i></i><span>Send broad repo context for each task</span></div>
-                <div class="bullet"><i></i><span>Pay per token for failed compile / test attempts</span></div>
-                <div class="bullet"><i></i><span>Rate limits and context-window pressure</span></div>
-                <div class="bullet"><i></i><span>No long-term local learning loop</span></div>
+              <div>
+                <div class="panel-top">
+                  <span class="panel-tag">The Old Way</span>
+                  <span class="panel-tag">Cloud API Drain</span>
+                </div>
+                <h3 class="panel-title">Monolithic prompts + paid retries.</h3>
+                <p class="panel-copy">
+                  Entire repositories become prompt context. Failed compile attempts become paid token churn.
+                  Rate limits interrupt the loop, while the local workstation retains little durable learning.
+                </p>
+                <div class="bullet-list">
+                  <div class="bullet"><i></i><span>Send broad repo context for each task</span></div>
+                  <div class="bullet"><i></i><span>Pay per token for failed compile / test attempts</span></div>
+                  <div class="bullet"><i></i><span>Rate limits and context-window pressure</span></div>
+                  <div class="bullet"><i></i><span>No long-term local learning loop</span></div>
+                </div>
               </div>
             </article>
 
             <article class="compare-panel new">
-              <div class="panel-top">
-                <span class="panel-tag">The Sahayi Engine</span>
-                <span class="panel-tag">Zero-Cost Autonomy</span>
+              <div>
+                <div class="panel-top">
+                  <span class="panel-tag">The Sahayi Engine</span>
+                  <span class="panel-tag">Zero-Cost Autonomy</span>
+                </div>
+                <h3 class="panel-title">Local execution + targeted context.</h3>
+                <p class="panel-copy">
+                  Keep inference, test feedback, and memory on the workstation. Direct HTTP completions point straight to port 11434 with zero key requirements.
+                </p>
+                <!-- Screenshot 2: Edit Provider Local Config -->
+                <div class="screenshot-wrapper">
+                  <img src="screenshots/edit-provider.png" alt="Ollama Local Provider Configuration" loading="lazy" />
+                </div>
               </div>
-              <h3 class="panel-title">Local execution + targeted context.</h3>
-              <p class="panel-copy">
-                Keep inference, test feedback, and memory on the workstation. Use project structure and live execution
-                to narrow what each agent sees instead of replaying the whole codebase every time.
-              </p>
-              <div class="bullet-list">
+              <div class="bullet-list" style="margin-top: 16px;">
                 <div class="bullet"><i></i><span>100% private local execution via Ollama / LM Studio</span></div>
-                <div class="bullet"><i></i><span>Real-time AST navigation and dependency awareness</span></div>
-                <div class="bullet"><i></i><span>Local test iterations through ConPTY</span></div>
-                <div class="bullet"><i></i><span>Verified patches become durable training memory</span></div>
+                <div class="bullet"><i></i><span>Zero API fees or rate limits</span></div>
               </div>
             </article>
           </div>
         </div>
       </section>
 
+      <!-- SECTION 02: Architecture & Swarm -->
       <section class="section" id="architecture">
         <div class="shell">
           <div class="section-head">
@@ -745,6 +767,7 @@
         </div>
       </section>
 
+      <!-- SECTION 03: Fine-Tuning & In-IDE Training Console -->
       <section class="section" id="soup">
         <div class="shell">
           <div class="section-head">
@@ -763,8 +786,14 @@
               <h3 class="soup-title">Low-VRAM continuous adaptation for <em>real developer hardware</em>.</h3>
               <p class="credit">
                 Credit to <a href="https://github.com/MakazhanAlpamys" target="_blank" rel="noreferrer">Alpamys Makazhan (@MakazhanAlpamys)</a>:
-                Soup's layer-streaming approach makes LoRA fine-tuning of 8B models practical on 4 GB NVIDIA laptop GPUs (CUDA enabled), while day-to-day inference runs universally on your machine via Ollama.
+                Soup's layer-streaming approach makes LoRA fine-tuning of 8B models practical on 4 GB consumer NVIDIA laptop GPUs (CUDA enabled), while day-to-day inference runs universally on your machine via Ollama.
               </p>
+
+              <!-- Screenshot 3: Fine Tuning In-IDE Console -->
+              <div class="screenshot-wrapper">
+                <img src="screenshots/fine-tuning.jpg" alt="In-IDE Local Model Fine-Tuning Console" loading="lazy" />
+              </div>
+
               <div class="pipeline">
                 <div class="pipeline-item"><div class="pipeline-n">1</div><div class="pipeline-text">SQLite Memory Bank → verified coding episodes</div></div>
                 <div class="pipeline-item"><div class="pipeline-n">2</div><div class="pipeline-text">JSONL Dataset → training-ready examples</div></div>
@@ -783,6 +812,7 @@
         </div>
       </section>
 
+      <!-- SECTION 04: Safety & Visibility (Settings & API Metrics) -->
       <section class="section">
         <div class="shell">
           <div class="section-head">
@@ -796,17 +826,19 @@
             </p>
           </div>
           <div class="suite">
+            <!-- Screenshot 4: Settings Page -->
             <article class="suite-card">
               <div class="suite-icon">Δ</div>
-              <h3>Provider Orchestration &amp; Local Fallback</h3>
+              <h3>Provider Orchestration &amp; Priority Ladder</h3>
               <p>
-                Configure local and cloud providers with strict priority routing, custom endpoints, and encrypted credentials managed right from the desktop UI.
+                Configure local and cloud providers with strict priority routing, custom endpoints, and encrypted credentials managed directly from the WinUI 3 interface.
               </p>
               <div class="screenshot-wrapper">
                 <img src="screenshots/settings-page.png" alt="Coding Sahayi Model Providers and Settings" loading="lazy" />
               </div>
             </article>
 
+            <!-- Screenshot 5: API Metrics -->
             <article class="suite-card">
               <div class="suite-icon">Σ</div>
               <h3>Real-time API Telemetry &amp; Audit Dashboard</h3>
