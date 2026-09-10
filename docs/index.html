@@ -4,14 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#07090e" />
-  <meta name="description" content="Coding Sahayi — a privacy-first, local-first autonomous WinUI 3 and .NET 8 C# IDE built around local coding swarms, ConPTY test loops, and continuous fine-tuning." />
-  
+  <meta name="description" content="Coding Sahayi is a free, open-source, local-first autonomous coding IDE for Windows. WinUI 3 and .NET 8, powered by Ollama, ConPTY test-and-repair loops, and continuous local fine-tuning. No cloud token bills." />
+  <meta name="keywords" content="autonomous coding IDE, local-first IDE, WinUI 3, .NET 8, Ollama, local LLM coding agent, AI coding swarm, ConPTY, self-repairing agent, continuous fine-tuning, open source IDE, privacy-first developer tool, Coding Sahayi" />
+  <meta name="author" content="Muhammed Shabeer" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
+  <link rel="canonical" href="https://codingsahayi.github.io/" />
+
   <!-- Open Graph / Social Meta -->
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Coding Sahayi" />
+  <meta property="og:locale" content="en_US" />
   <meta property="og:url" content="https://codingsahayi.github.io/" />
   <meta property="og:title" content="Coding Sahayi — Autonomous Coding Swarms. Zero Cloud Token Bills." />
   <meta property="og:description" content="Local-first autonomous WinUI 3 IDE powered by Ollama, ConPTY self-repair loops, and local fine-tuning." />
   <meta property="og:image" content="https://codingsahayi.github.io/screenshots/api-metrics.png" />
+  <meta property="og:image:alt" content="Coding Sahayi API metrics and telemetry dashboard showing local model latency and token usage" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
@@ -19,8 +29,192 @@
   <meta name="twitter:title" content="Coding Sahayi — Autonomous Coding Swarms" />
   <meta name="twitter:description" content="Privacy-first, local WinUI 3 coding environment with automated test-repair loops via ConPTY and Ollama." />
   <meta name="twitter:image" content="https://codingsahayi.github.io/screenshots/api-metrics.png" />
+  <meta name="twitter:image:alt" content="Coding Sahayi API metrics and telemetry dashboard" />
+  <meta name="twitter:creator" content="@muhammedshabeer" />
 
-  <title>Coding Sahayi — Autonomous Coding Swarms</title>
+  <title>Coding Sahayi — Autonomous Coding Swarms. Zero Cloud Token Bills.</title>
+
+  <!-- Discovery hints for AI answer engines -->
+  <link rel="alternate" type="text/plain" href="https://codingsahayi.github.io/llms.txt" title="LLM-friendly project summary" />
+  <link rel="sitemap" type="application/xml" href="https://codingsahayi.github.io/sitemap.xml" />
+  <link rel="author" href="https://muhammedshabeer.github.io/" />
+
+  <!-- Structured data: helps search engines and AI answer engines identify the entity -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://codingsahayi.github.io/#software",
+        "name": "Coding Sahayi",
+        "alternateName": "Sahayi IDE",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "Integrated Development Environment",
+        "operatingSystem": "Windows 10, Windows 11",
+        "softwareVersion": "1.0",
+        "url": "https://codingsahayi.github.io/",
+        "description": "Coding Sahayi is a free, open-source, local-first autonomous coding IDE for Windows, built with WinUI 3 and .NET 8. It orchestrates specialized local agent swarms over ConPTY pseudo-terminals, detects and repairs its own failing unit tests, and continuously fine-tunes a local model on verified patches without sending code to the cloud.",
+        "isAccessibleForFree": true,
+        "license": "https://opensource.org/licenses/MIT",
+        "codeRepository": "https://github.com/codingsahayi/codingsahayi",
+        "programmingLanguage": ["C#", "XAML"],
+        "runtimePlatform": ".NET 8",
+        "image": "https://codingsahayi.github.io/screenshots/ide-front.png",
+        "screenshot": [
+          "https://codingsahayi.github.io/screenshots/ide-front.png",
+          "https://codingsahayi.github.io/screenshots/edit-provider.png",
+          "https://codingsahayi.github.io/screenshots/settings-page.png",
+          "https://codingsahayi.github.io/screenshots/api-metrics.png",
+          "https://codingsahayi.github.io/screenshots/fine-tuning.jpg"
+        ],
+        "featureList": [
+          "Local-first autonomous agent swarm (Architect, Worker, Critic, Scribe)",
+          "ConPTY pseudo-terminal execution with autonomous test-and-repair loops",
+          "Continuous local fine-tuning on verified patches (low-VRAM)",
+          "Provider orchestration across Ollama and LM Studio with a priority ladder",
+          "EF Core and SQLite local memory for repository context",
+          "Real-time API telemetry, latency and token audit dashboard",
+          "Diff review before every autonomous edit is applied"
+        ],
+        "author": { "@id": "https://codingsahayi.github.io/#creator" },
+        "publisher": { "@id": "https://codingsahayi.github.io/#creator" },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://codingsahayi.github.io/#website",
+        "url": "https://codingsahayi.github.io/",
+        "name": "Coding Sahayi",
+        "description": "Official site for Coding Sahayi, a local-first autonomous coding IDE for Windows.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://codingsahayi.github.io/#creator" },
+        "about": { "@id": "https://codingsahayi.github.io/#software" }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://codingsahayi.github.io/#webpage",
+        "url": "https://codingsahayi.github.io/",
+        "name": "Coding Sahayi — Autonomous Coding Swarms. Zero Cloud Token Bills.",
+        "isPartOf": { "@id": "https://codingsahayi.github.io/#website" },
+        "about": { "@id": "https://codingsahayi.github.io/#software" },
+        "primaryImageOfPage": "https://codingsahayi.github.io/screenshots/ide-front.png",
+        "inLanguage": "en",
+        "datePublished": "2025-01-01",
+        "dateModified": "2026-02-14",
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": [".hero-copy", "#faq-answer-what-is-coding-sahayi"]
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://codingsahayi.github.io/#creator",
+        "name": "Muhammed Shabeer",
+        "jobTitle": "Partner & CTO · Enterprise Solutions Architect",
+        "description": "Enterprise solutions architect based in Doha, Qatar, directing enterprise software platforms, autonomous AI developer tools, and cross-border systems architecture. Creator and architect of Coding Sahayi.",
+        "url": "https://muhammedshabeer.github.io/",
+        "sameAs": [
+          "https://github.com/MuhammedShabeer",
+          "https://linkedin.com/in/muhammed-shabeer-",
+          "https://muhammedshabeer.github.io/"
+        ],
+        "knowsAbout": [
+          "Enterprise Software Architecture",
+          "Autonomous AI Agents",
+          "Local Large Language Models",
+          "C# and .NET",
+          "WinUI 3",
+          "Developer Tooling"
+        ],
+        "workLocation": {
+          "@type": "Place",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Doha",
+            "addressCountry": "QA"
+          }
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://codingsahayi.github.io/#faq",
+        "isPartOf": { "@id": "https://codingsahayi.github.io/#webpage" },
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is Coding Sahayi?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Coding Sahayi is a free, open-source, local-first autonomous coding IDE for Windows, built with WinUI 3 and .NET 8. It runs specialized agent swarms on your own machine, executes code through ConPTY pseudo-terminals, detects and repairs its own failing tests, and continuously fine-tunes a local model on the patches you approve."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Coding Sahayi send my source code to the cloud?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Coding Sahayi is designed local-first: inference runs through local providers such as Ollama or LM Studio, repository memory is stored locally in EF Core and SQLite, and fine-tuning happens on your own hardware. Your code and prompts stay on your machine."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Coding Sahayi require an API key or a paid subscription?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Coding Sahayi is free and MIT licensed, and it does not require a cloud API key or subscription. It uses local models, so there are no per-token cloud charges. Running it requires a Windows machine with enough VRAM for the model you choose."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is an autonomous coding swarm?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "An autonomous coding swarm is a set of specialized agents that each own a narrow responsibility and cooperate on one task. Coding Sahayi uses four roles: an Architect that plans and decomposes the work, a Worker that writes the code, a Critic that reviews and challenges the result, and a Scribe that records the outcome. Narrow boundaries keep each agent's context small and its output verifiable."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does the agent fix its own compiler and test failures?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Coding Sahayi runs builds and tests inside ConPTY pseudo-terminals and reads the real exit codes and output. When a test or compilation fails, that output is fed back to the swarm as evidence, which produces a targeted patch. The loop repeats until the suite passes or a configured retry limit is reached, and every proposed change is surfaced as a diff for review before it is applied."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which local models and providers are supported?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Coding Sahayi orchestrates local providers including Ollama and LM Studio through a priority ladder, so you can rank which model handles which task and fall back automatically when one is unavailable. Any model exposed through those local endpoints can be used."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is continuous fine-tuning in Coding Sahayi?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Continuous fine-tuning means the IDE exports the patches that were verified by a passing test suite into a training dataset and adapts a local model on that data. The model improves on patterns your own codebase has already proven correct, using low-VRAM training suitable for real developer hardware."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What are the system requirements for Coding Sahayi?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Coding Sahayi requires Windows 10 or Windows 11 and the .NET 8 runtime, since it is built with WinUI 3. A local model provider such as Ollama or LM Studio must be installed, and available VRAM determines which model size you can run."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     :root {
@@ -842,6 +1036,64 @@
       .quote-popup-card { transition: none; }
       .quote-popup-card { transform: none; }
     }
+
+    /* FAQ — visible answers that mirror the FAQPage structured data */
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 34px;
+    }
+    .faq-item {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      padding: 0 20px;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .faq-item[open] {
+      border-color: var(--border-strong);
+      background: var(--surface-strong);
+    }
+    .faq-item:hover { border-color: var(--border-strong); }
+    .faq-item summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 17px 0;
+      font-size: 0.98rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #eaf7fb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: "+";
+      flex-shrink: 0;
+      color: var(--cyan);
+      font: 700 1.15rem/1 var(--mono);
+      transition: transform 0.2s ease;
+    }
+    .faq-item[open] summary::after { transform: rotate(45deg); }
+    .faq-item summary:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 3px;
+      border-radius: 6px;
+    }
+    .faq-item p {
+      padding: 0 0 19px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.72;
+    }
+    .faq-item p strong { color: #d7f4fa; font-weight: 700; }
+
+    @media (max-width: 780px) {
+      .faq-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -857,8 +1109,9 @@
         <a href="#swarm">Swarm</a>
         <a href="#soup">Fine-Tuning (Soup)</a>
         <a href="#economics">Token Economics</a>
+        <a href="#faq">FAQ</a>
         <a href="https://github.com/codingsahayi/codingsahayi.github.io" target="_blank" rel="noreferrer">GitHub</a>
-        <a class="nav-cta" href="https://linktr.ee/muhammedshabeer" target="_blank" rel="noreferrer">Developer Profile ↗</a>
+        <a class="nav-cta" href="https://muhammedshabeer.github.io/" target="_blank" rel="noreferrer">Developer Profile ↗</a>
       </nav>
     </header>
 
@@ -1117,12 +1370,113 @@
         </div>
       </section>
 
+      <!-- SECTION 05: FAQ — written for people and for answer engines -->
+      <section class="section" id="faq">
+        <div class="shell">
+          <div class="section-head">
+            <div>
+              <div class="kicker">05 / Frequently asked</div>
+              <h2 class="section-title">Direct answers about a local-first autonomous IDE.</h2>
+            </div>
+            <p class="section-desc">
+              Short, specific answers to the questions developers ask before running
+              an autonomous agent against a real repository.
+            </p>
+          </div>
+
+          <div class="faq-grid">
+            <details class="faq-item" open>
+              <summary>What is Coding Sahayi?</summary>
+              <p id="faq-answer-what-is-coding-sahayi">
+                Coding Sahayi is a free, open-source, local-first autonomous coding IDE for Windows,
+                built with <strong>WinUI 3</strong> and <strong>.NET 8</strong>. It runs specialized
+                agent swarms on your own machine, executes code through <strong>ConPTY</strong>
+                pseudo-terminals, detects and repairs its own failing tests, and continuously
+                fine-tunes a local model on the patches you approve.
+              </p>
+            </details>
+
+            <details class="faq-item">
+              <summary>Does Coding Sahayi send my source code to the cloud?</summary>
+              <p>
+                No. Coding Sahayi is designed local-first: inference runs through local providers
+                such as Ollama or LM Studio, repository memory is stored locally in EF Core and
+                SQLite, and fine-tuning happens on your own hardware. Your code and prompts stay
+                on your machine.
+              </p>
+            </details>
+
+            <details class="faq-item">
+              <summary>Does Coding Sahayi require an API key or a paid subscription?</summary>
+              <p>
+                No. Coding Sahayi is free and MIT licensed, and it does not require a cloud API key
+                or subscription. Because it uses local models, there are no per-token cloud charges.
+                You do need a Windows machine with enough VRAM for the model you choose.
+              </p>
+            </details>
+
+            <details class="faq-item">
+              <summary>What is an autonomous coding swarm?</summary>
+              <p>
+                An autonomous coding swarm is a set of specialized agents that each own a narrow
+                responsibility and cooperate on one task. Coding Sahayi uses four roles: an
+                <strong>Architect</strong> that plans and decomposes the work, a
+                <strong>Worker</strong> that writes the code, a <strong>Critic</strong> that
+                reviews and challenges the result, and a <strong>Scribe</strong> that records the
+                outcome. Narrow boundaries keep each agent's context small and its output verifiable.
+              </p>
+            </details>
+
+            <details class="faq-item">
+              <summary>How does the agent fix its own compiler and test failures?</summary>
+              <p>
+                Coding Sahayi runs builds and tests inside ConPTY pseudo-terminals and reads the
+                real exit codes and output. When a test or compilation fails, that output is fed
+                back to the swarm as evidence, which produces a targeted patch. The loop repeats
+                until the suite passes or a configured retry limit is reached, and every proposed
+                change is surfaced as a diff for review before it is applied.
+              </p>
+            </details>
+
+            <details class="faq-item">
+              <summary>Which local models and providers are supported?</summary>
+              <p>
+                Coding Sahayi orchestrates local providers including <strong>Ollama</strong> and
+                <strong>LM Studio</strong> through a priority ladder, so you can rank which model
+                handles which task and fall back automatically when one is unavailable. Any model
+                exposed through those local endpoints can be used.
+              </p>
+            </details>
+
+            <details class="faq-item">
+              <summary>What is continuous fine-tuning in Coding Sahayi?</summary>
+              <p>
+                Continuous fine-tuning means the IDE exports the patches that were verified by a
+                passing test suite into a training dataset and adapts a local model on that data.
+                The model improves on patterns your own codebase has already proven correct, using
+                low-VRAM training suitable for real developer hardware.
+              </p>
+            </details>
+
+            <details class="faq-item">
+              <summary>What are the system requirements for Coding Sahayi?</summary>
+              <p>
+                Coding Sahayi requires <strong>Windows 10 or Windows 11</strong> and the
+                <strong>.NET 8</strong> runtime, since it is built with WinUI 3. A local model
+                provider such as Ollama or LM Studio must be installed, and your available VRAM
+                determines which model size you can run.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
       <section class="section" id="creator">
         <div class="shell">
           <div class="note creator-card">
             <div class="creator-grid">
               <div class="creator-avatar-wrap">
-                <img src="https://muhammedshabeer.github.io/MyPortfolio/assets/profile.png" alt="Muhammed Shabeer" class="creator-avatar" />
+                <img src="https://muhammedshabeer.github.io/assets/profile.png" alt="Muhammed Shabeer" class="creator-avatar" />
                 <span class="creator-badge">Creator &amp; Architect</span>
               </div>
               <div class="creator-details">
@@ -1136,13 +1490,13 @@
                   Operating from Doha, Qatar. Directing enterprise software platforms, autonomous AI developer tools, and cross-border systems architecture.
                 </p>
                 <div class="creator-links">
-                  <a href="https://linktr.ee/muhammedshabeer" target="_blank" rel="noreferrer" class="creator-link">
+                  <a href="https://muhammedshabeer.github.io/" target="_blank" rel="noreferrer" class="creator-link">
                     Portfolio ↗
                   </a>
                   <a href="https://github.com/MuhammedShabeer" target="_blank" rel="noreferrer" class="creator-link">
                     GitHub ↗
                   </a>
-                  <a href="https://linkedin.com/in/muhammed-shabeer-" target="_blank" rel="noreferrer" class="creator-link">
+                  <a href="https://www.linkedin.com/in/muhammed-shabeer-" target="_blank" rel="noreferrer" class="creator-link">
                     LinkedIn ↗
                   </a>
                 </div>
@@ -1162,7 +1516,7 @@
           </div>
           <div class="footer-links">
             <a href="https://github.com/codingsahayi/codingsahayi.github.io" target="_blank" rel="noreferrer">GitHub Repository</a>
-            <a href="https://linktr.ee/muhammedshabeer" target="_blank" rel="noreferrer">Muhammed Shabeer</a>
+            <a href="https://muhammedshabeer.github.io/" target="_blank" rel="noreferrer">Muhammed Shabeer</a>
             <a href="#architecture">Documentation</a>
           </div>
         </div>

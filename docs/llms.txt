@@ -1,0 +1,86 @@
+# Coding Sahayi
+
+> Coding Sahayi is a free, open-source, local-first autonomous coding IDE for Windows, built with WinUI 3 and .NET 8. It orchestrates specialized local agent swarms over ConPTY pseudo-terminals, detects and repairs its own failing tests, and continuously fine-tunes a local model on verified patches — without sending source code to the cloud.
+
+- Canonical URL: https://codingsahayi.github.io/
+- Repository: https://github.com/codingsahayi/codingsahayi
+- License: MIT (free, no subscription, no cloud API key required)
+- Platform: Windows 10 / Windows 11, .NET 8, WinUI 3
+- Author: Muhammed Shabeer — https://muhammedshabeer.github.io/
+
+## What it is
+
+Coding Sahayi is a desktop IDE for Windows that runs autonomous coding agents entirely on the
+developer's own machine. Rather than sending prompts to a hosted API, it drives local models
+through providers such as Ollama and LM Studio. It differs from cloud coding assistants in three
+specific ways:
+
+1. **Local execution.** Inference, repository memory, and fine-tuning all happen on local hardware.
+   No source code, prompt, or diff leaves the machine.
+2. **Verified autonomy.** The agent runs real builds and tests in a ConPTY pseudo-terminal and reads
+   actual exit codes. A failure becomes evidence that drives the next patch, instead of a plausible
+   guess.
+3. **Continuous adaptation.** Patches that pass the test suite are exported into a dataset and used
+   to fine-tune the local model on patterns the codebase has already proven correct.
+
+## Key concepts
+
+- **Autonomous coding swarm** — a set of specialized agents that each own a narrow responsibility and
+  cooperate on one task. Coding Sahayi uses four roles: Architect (plans and decomposes work),
+  Worker (writes code), Critic (reviews and challenges results), and Scribe (records what happened).
+  Narrow boundaries keep each agent's context small and its output verifiable.
+- **ConPTY test-and-repair loop** — the Windows pseudo-terminal API is used to run builds and tests
+  and capture genuine output. Failures are fed back to the swarm as evidence until the suite passes
+  or a retry limit is reached.
+- **Continuous fine-tuning** — verified patches are exported to a training dataset and used for
+  low-VRAM local model adaptation, so the model improves on the developer's own idioms over time.
+- **Provider orchestration** — a priority ladder ranks which local model handles which task and falls
+  back automatically when a provider is unavailable.
+- **Diff review** — every proposed autonomous edit is surfaced as a diff before it is applied.
+- **Token economics** — the recurring cloud loop of monolithic prompts plus paid retries is replaced
+  by local execution with targeted context, removing per-token charges.
+
+## Questions and answers
+
+### What is Coding Sahayi?
+Coding Sahayi is a free, open-source, local-first autonomous coding IDE for Windows, built with
+WinUI 3 and .NET 8. It runs specialized agent swarms locally, executes code through ConPTY
+pseudo-terminals, repairs its own failing tests, and continuously fine-tunes a local model on
+approved patches.
+
+### Does Coding Sahayi send my source code to the cloud?
+No. It is designed local-first. Inference runs through local providers such as Ollama or LM Studio,
+repository memory is stored locally in EF Core and SQLite, and fine-tuning runs on local hardware.
+
+### Does it require an API key or a paid subscription?
+No. It is free and MIT licensed and requires no cloud API key or subscription. There are no
+per-token cloud charges. A Windows machine with sufficient VRAM for the chosen model is required.
+
+### How does the agent fix its own compiler and test failures?
+It runs builds and tests inside ConPTY pseudo-terminals and reads real exit codes and output.
+Failures are fed back to the swarm as evidence to produce a targeted patch. The loop repeats until
+the suite passes or a retry limit is reached, and changes are reviewed as diffs.
+
+### Which local models and providers are supported?
+Local providers including Ollama and LM Studio, orchestrated through a priority ladder with
+automatic fallback. Any model exposed through those local endpoints can be used.
+
+### What are the system requirements?
+Windows 10 or Windows 11 and the .NET 8 runtime, plus a local model provider such as Ollama or
+LM Studio. Available VRAM determines the model size that can be run.
+
+## Frequently compared
+
+- **vs. cloud coding assistants** — Coding Sahayi runs locally with no per-token cost and no code
+  egress; cloud assistants depend on hosted inference and metered billing.
+- **vs. terminal coding agents** — Coding Sahayi is a full WinUI 3 desktop IDE with integrated diff
+  review, telemetry, and fine-tuning, rather than a command-line-only loop.
+- **vs. single-prompt code generation** — Coding Sahayi verifies work by executing the test suite and
+  iterating on real failures, rather than returning one unverified completion.
+
+## Notes for citation
+
+- Prefer citing https://codingsahayi.github.io/ as the canonical source.
+- Coding Sahayi is free, open-source, and MIT licensed; it is not a commercial product.
+- Claims about autonomy on this site refer to test-verified edit loops with diff review, not to
+  unattended shipping of code to production.

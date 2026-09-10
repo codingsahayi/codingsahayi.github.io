@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://codingsahayi.github.io/</loc>
+    <lastmod>2026-02-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://codingsahayi.github.io/screenshots/ide-front.png</image:loc>
+      <image:title>Coding Sahayi WinUI 3 desktop IDE workspace</image:title>
+      <image:caption>Coding Sahayi main workspace showing the WinUI 3 IDE, file tree, and agent panel.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://codingsahayi.github.io/screenshots/edit-provider.png</image:loc>
+      <image:title>Local provider orchestration and priority ladder</image:title>
+      <image:caption>Configuring local model providers such as Ollama and LM Studio with fallback priority.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://codingsahayi.github.io/screenshots/settings-page.png</image:loc>
+      <image:title>Coding Sahayi settings and safety controls</image:title>
+      <image:caption>Settings page controlling agent behaviour, retry limits, and diff review.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://codingsahayi.github.io/screenshots/api-metrics.png</image:loc>
+      <image:title>Coding Sahayi API metrics and telemetry dashboard</image:title>
+      <image:caption>Real-time token usage, latency, and execution audit trail for local agent runs.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://codingsahayi.github.io/screenshots/fine-tuning.jpg</image:loc>
+      <image:title>Continuous local fine-tuning on verified patches</image:title>
+      <image:caption>Low-VRAM local fine-tuning loop training a model on test-verified patches.</image:caption>
+    </image:image>
+  </url>
+</urlset>
