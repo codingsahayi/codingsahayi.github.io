@@ -683,6 +683,165 @@
         justify-content: center;
       }
     }
+
+    /* First-visit welcome popup */
+    .quote-popup {
+      position: fixed;
+      inset: 0;
+      z-index: 70;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      background: rgba(4, 7, 12, 0.74);
+      backdrop-filter: blur(9px);
+      -webkit-backdrop-filter: blur(9px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.32s ease, visibility 0.32s ease;
+    }
+    .quote-popup.is-open {
+      opacity: 1;
+      visibility: visible;
+    }
+    .quote-popup-card {
+      position: relative;
+      overflow: hidden;
+      width: min(620px, 100%);
+      padding: 40px 36px 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(0,240,255,.13), transparent 46%),
+        radial-gradient(circle at 100% 100%, rgba(138,43,226,.12), transparent 48%),
+        var(--surface-strong);
+      box-shadow: var(--shadow), 0 0 62px rgba(0,240,255,.14);
+      transform: translateY(16px) scale(0.97);
+      transition: transform 0.34s cubic-bezier(.2,.8,.3,1);
+    }
+    .quote-popup.is-open .quote-popup-card {
+      transform: translateY(0) scale(1);
+    }
+    .quote-popup-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 34px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font: 700 1.05rem/1 var(--sans);
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    }
+    .quote-popup-close:hover,
+    .quote-popup-close:focus-visible {
+      border-color: var(--cyan);
+      background: var(--cyan-soft);
+      color: #ffffff;
+    }
+    .quote-popup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      font-weight: 800;
+      color: var(--cyan);
+      background: var(--cyan-soft);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 999px;
+      padding: 4px 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .quote-popup-mark {
+      display: block;
+      margin: 18px 0 6px;
+      color: var(--cyan);
+      font: 900 3.4rem/0.62 Georgia, serif;
+      text-shadow: 0 0 22px rgba(0,240,255,.28);
+    }
+    .quote-popup-text {
+      font-size: clamp(1.1rem, 2.2vw, 1.42rem);
+      line-height: 1.55;
+      letter-spacing: -0.02em;
+      color: #dcebf0;
+      font-style: italic;
+    }
+    .quote-popup-attrib {
+      margin-top: 16px;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .quote-popup-attrib strong { color: #e8fbff; }
+    .quote-popup-actions {
+      margin-top: 26px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .quote-popup-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 11px 18px;
+      border-radius: 11px;
+      border: 1px solid var(--border-strong);
+      background: var(--cyan-soft);
+      color: #eafeff;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    }
+    .quote-popup-cta:hover {
+      border-color: var(--cyan);
+      background: rgba(0, 240, 255, 0.22);
+      color: #ffffff;
+      transform: translateY(-2px);
+    }
+    .quote-popup-ghost {
+      display: inline-flex;
+      align-items: center;
+      padding: 11px 16px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease;
+    }
+    .quote-popup-ghost:hover {
+      border-color: var(--cyan);
+      color: #dffbff;
+    }
+    body.popup-open { overflow: hidden; }
+
+    @media (max-width: 560px) {
+      .quote-popup-card { padding: 34px 22px 26px; }
+      .quote-popup-actions { flex-direction: column; align-items: stretch; }
+      .quote-popup-cta, .quote-popup-ghost { justify-content: center; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .quote-popup,
+      .quote-popup-card { transition: none; }
+      .quote-popup-card { transform: none; }
+    }
   </style>
 </head>
 <body>
@@ -1010,6 +1169,117 @@
       </div>
     </footer>
   </div>
+
+  <!-- First-visit welcome popup: quote from the creator -->
+  <div
+    class="quote-popup"
+    id="quote-popup"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="quote-popup-title"
+    aria-describedby="quote-popup-quote"
+    aria-hidden="true"
+    hidden
+  >
+    <div class="quote-popup-card">
+      <button type="button" class="quote-popup-close" data-popup-close aria-label="Close welcome message">&times;</button>
+      <span class="quote-popup-badge">⚡ Welcome to Coding Sahayi</span>
+      <span class="quote-popup-mark" aria-hidden="true">“</span>
+      <blockquote class="quote-popup-text" id="quote-popup-quote">
+        Building an entire desktop IDE from scratch has been an intense learning curve, but seeing the agent catch its own compiler bugs and fix them autonomously makes the late nights worth it.
+      </blockquote>
+      <p class="quote-popup-attrib" id="quote-popup-title">
+        — <strong>Muhammed Shabeer</strong> · Creator &amp; Architect
+      </p>
+      <div class="quote-popup-actions">
+        <button type="button" class="quote-popup-cta" data-popup-close>
+          Explore the Architecture ↗
+        </button>
+        <a class="quote-popup-ghost" href="#creator" data-popup-close>
+          About the Developer
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* First-visit welcome popup — shown once, remembered in localStorage. */
+    (() => {
+      const KEY = "cs-welcome-quote-v1";
+      const popup = document.getElementById("quote-popup");
+      if (!popup) return;
+
+      let seen = null;
+      try { seen = window.localStorage.getItem(KEY); } catch (err) { seen = null; }
+      if (seen) return;
+
+      const card = popup.querySelector(".quote-popup-card");
+      let lastFocused = null;
+      let closeTimer = null;
+
+      const open = () => {
+        lastFocused = document.activeElement;
+        popup.classList.add("is-open");
+        document.body.classList.add("popup-open");
+        popup.removeAttribute("aria-hidden");
+        const cta = popup.querySelector(".quote-popup-cta");
+        if (cta) cta.focus({ preventScroll: true });
+      };
+
+      const close = () => {
+        if (!popup.classList.contains("is-open")) return;
+        popup.classList.remove("is-open");
+        document.body.classList.remove("popup-open");
+        popup.setAttribute("aria-hidden", "true");
+        try { window.localStorage.setItem(KEY, "1"); } catch (err) {}
+        if (lastFocused && typeof lastFocused.focus === "function") {
+          lastFocused.focus({ preventScroll: true });
+        }
+        closeTimer = window.setTimeout(() => { popup.hidden = true; }, 340);
+      };
+
+      popup.querySelectorAll("[data-popup-close]").forEach((el) => {
+        el.addEventListener("click", () => {
+          // Only suppress the default for buttons; anchors must still navigate
+          // to their target (e.g. "#creator") while the popup closes.
+          close();
+        });
+      });
+
+      // Click the dimmed backdrop (but not the card itself) to dismiss.
+      popup.addEventListener("click", (event) => {
+        if (event.target === popup) close();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          close();
+          return;
+        }
+        // Keep keyboard focus inside the dialog while it is open.
+        if (event.key === "Tab" && popup.classList.contains("is-open") && card) {
+          const focusables = card.querySelectorAll("a[href], button:not([disabled])");
+          if (!focusables.length) return;
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      });
+
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.setTimeout(open, reduced ? 120 : 760);
+
+      window.addEventListener("pagehide", () => {
+        if (closeTimer) window.clearTimeout(closeTimer);
+      });
+    })();
+  </script>
 
   <script>
     (() => {
