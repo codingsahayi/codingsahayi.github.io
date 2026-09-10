@@ -392,6 +392,8 @@ public class AgentContextManager
 
         // --- AGENTIC LOOP ---
         int iterationCount = 0;
+        int toolCycleCount = 0;               // safety cap for autonomous tool-call cycles
+        const int MaxToolCycles = 5;
         bool requiresAction = true;
         string finalResponse = string.Empty;
 
@@ -402,7 +404,14 @@ public class AgentContextManager
                 finalResponse = "I've hit my iteration limit. How would you like me to proceed?";
                 break;
             }
-            
+
+            // Safety loop limit: prevent unbounded tool-call recursion.
+            if (toolCycleCount >= MaxToolCycles)
+            {
+                finalResponse = "I've reached the maximum tool-call cycles and will stop here.";
+                break;
+            }
+
             iterationCount++;
             requiresAction = false;
             
@@ -514,35 +523,31 @@ public class AgentContextManager
                     }
                     
                     PruneContextIfNecessary();
+                    toolCycleCount++;
                     requiresAction = true; 
                 }
                 else
                 {
                     _apiHistory.Add(new AssistantChatMessage(completion));
                     finalResponse = completion.Content[0].Text;
-                    
-                    if (finalResponse.TrimStart().StartsWith("{") && finalResponse.Contains("\"name\"") && finalResponse.Contains("\"parameters\""))
+
+                    // Ollama/Qwen may emit a text-based JSON tool call instead of a native SDK
+                    // ToolCall. Support both "parameters" and "arguments" keys, and detect the
+                    // JSON block even when the model prepends prose around it.
+                    var toolResult2 = TryParseTextToolCall(finalResponse);
+                    if (toolResult2 != null)
                     {
-                        try
-                        {
-                            using var doc = JsonDocument.Parse(finalResponse);
-                            var root = doc.RootElement;
-                            if (root.TryGetProperty("name", out var nameProp) && root.TryGetProperty("parameters", out var paramsProp))
-                            {
-                                string toolName = nameProp.GetString() ?? "";
-                                string argsStr = paramsProp.ToString();
-                                string toolId = "fallback_" + Guid.NewGuid().ToString().Substring(0, 8);
-                                
-                                onToolStart?.Invoke(toolId, toolName, argsStr);
-                                var execution = await ExecuteToolAsync(toolName, paramsProp, cancellationToken);
-                                onToolEnd?.Invoke(toolId, execution.result, execution.success);
-                                
-                                _apiHistory.Add(new UserChatMessage($"[Tool Execution Result]:\n{execution.result}"));
-                                requiresAction = true;
-                                continue;
-                            }
-                        }
-                        catch { }
+                        var toolCallData = toolResult2.Value;
+                        // Do NOT print the raw JSON as the final answer — display an executing indicator.
+                        onStatusUpdate($"Executing tool: {toolCallData.toolName}...");
+                        onToolStart?.Invoke(toolCallData.toolId, toolCallData.toolName, toolCallData.argumentsJson);
+                        var execution = await ExecuteToolAsync(toolCallData.toolName, toolCallData.arguments, cancellationToken);
+                        onToolEnd?.Invoke(toolCallData.toolId, execution.result, execution.success);
+
+                        _apiHistory.Add(new UserChatMessage($"[Tool Result for {toolCallData.toolName}]:\n{execution.result}"));
+                        toolCycleCount++;
+                        requiresAction = true;
+                        continue;
                     }
 
                     PruneContextIfNecessary();
@@ -963,6 +968,64 @@ public class AgentContextManager
     {
         if (string.IsNullOrWhiteSpace(path)) return WorkspaceDirectory;
         return System.IO.Path.IsPathRooted(path) ? path : System.IO.Path.Combine(WorkspaceDirectory, path);
+    }
+
+    /// <summary>
+    /// Detects a text-based JSON tool call (as emitted by Ollama/Qwen) and parses the tool
+    /// name and arguments. Supports both the "arguments" and "parameters" key names and finds
+    /// the JSON block even when the model prepends prose around it. Returns null if the text
+    /// is not a tool call.
+    /// </summary>
+    private (string toolName, string argumentsJson, JsonElement arguments, string toolId)? TryParseTextToolCall(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+
+        // Locate the JSON object that carries name + (arguments | parameters).
+        int nameIdx = text.IndexOf("\"name\"", StringComparison.OrdinalIgnoreCase);
+        if (nameIdx < 0) return null;
+        int argsIdx = text.IndexOf("\"arguments\"", StringComparison.OrdinalIgnoreCase);
+        if (argsIdx < 0) argsIdx = text.IndexOf("\"parameters\"", StringComparison.OrdinalIgnoreCase);
+        if (argsIdx < 0) return null;
+
+        int open = text.IndexOf('{');
+        if (open < 0 || open > argsIdx) return null;
+        // Find the matching closing brace (balanced scan) — cheap and robust for nested JSON.
+        int depth = 0, close = -1;
+        for (int i = open; i < text.Length; i++)
+        {
+            char ch = text[i];
+            if (ch == '{') depth++;
+            else if (ch == '}')
+            {
+                depth--;
+                if (depth == 0) { close = i; break; }
+            }
+        }
+        if (close < 0) return null;
+
+        string jsonBlock = text.Substring(open, close - open + 1);
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonBlock);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("name", out var nameProp)) return null;
+
+            var argumentsProp = root.TryGetProperty("arguments", out var aProp)
+                ? aProp
+                : root.TryGetProperty("parameters", out var pProp) ? pProp : default(JsonElement);
+            if (argumentsProp.ValueKind == JsonValueKind.Undefined || argumentsProp.ValueKind == JsonValueKind.Null)
+                return null;
+
+            string toolName = nameProp.GetString() ?? "";
+            if (string.IsNullOrWhiteSpace(toolName)) return null;
+
+            string toolId = "text_" + Guid.NewGuid().ToString().Substring(0, 8);
+            return (toolName, argumentsProp.ToString(), argumentsProp, toolId);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private int GetIntProperty(JsonElement element, string propertyName, int defaultValue)
