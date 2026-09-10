@@ -28,21 +28,21 @@
 
 ## 💡 Why Coding Sahayi?
 
-Cloud-hosted AI coding assistants stream entire repositories to external APIs, charge per token, and degrade when compiler or test errors happen[cite: 2, 3]. Every failed compile retry becomes paid token churn[cite: 2].
+Cloud-hosted AI coding assistants stream entire repositories to external APIs, charge per token, and degrade when compiler or test errors happen. Every failed compile retry becomes paid token churn.
 
-**Coding Sahayi moves the entire loop onto your workstation:**[cite: 2]
+**Coding Sahayi moves the entire loop onto your workstation:**
 
-* **100% Offline & Private:** Inference runs through local endpoints (like `qwen2.5-coder:7b` via Ollama)[cite: 2, 3]. Code never leaves your machine[cite: 2, 3].
-* **ConPTY Process Execution:** Intercepts real compilation and test suite output in background pseudo-terminals via `Pty.Net`[cite: 2].
-* **Autonomous Self-Repair:** When tests fail, runtime traces are fed back to the swarm to generate targeted fixes until the suite passes[cite: 2, 3].
-* **Gated Diff Review:** Uses DiffPlex for side-by-side diff inspection before any file touches the disk[cite: 2, 3].
-* **Continuous Local Fine-Tuning:** Exports verified passing patches to train local models on your actual codebase idioms[cite: 2, 3].
+* **100% Offline & Private:** Inference runs through local endpoints (like `qwen2.5-coder:7b` via Ollama). Code never leaves your machine.
+* **ConPTY Process Execution:** Intercepts real compilation and test suite output in background pseudo-terminals via `Pty.Net`.
+* **Autonomous Self-Repair:** When tests fail, runtime traces are fed back to the swarm to generate targeted fixes until the suite passes.
+* **Gated Diff Review:** Uses DiffPlex for side-by-side diff inspection before any file touches the disk.
+* **Continuous Local Fine-Tuning:** Exports verified passing patches to train local models on your actual codebase idioms.
 
 ---
 
 ## 🔄 The 4-Agent Swarm Architecture
 
-Rather than relying on one monolithic prompt, Coding Sahayi divides responsibilities across four specialized agents:[cite: 2, 3]
+Rather than relying on one monolithic prompt, Coding Sahayi divides responsibilities across four specialized agents:
 
 ```mermaid
 graph TD
