@@ -2,144 +2,189 @@
 
 # ⚡ Coding Sahayi
 
-**The Autonomous, Privacy-First AI IDE Powered by Multi-Agent Swarms & Local Fine-Tuning**
-
-[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-[![WinUI 3](https://img.shields.io/badge/UI-WinUI%203-0078D4?logo=windows&logoColor=white)](https://learn.microsoft.com/en-us/windows/apps/winui/winui3/)
-[![Ollama](https://img.shields.io/badge/Local%20AI-Ollama%20%7C%20LM%20Studio-FF6F00?logo=ollama&logoColor=white)](https://ollama.ai)
-[![Soup Fine-Tuning](https://img.shields.io/badge/Fine--Tuning-Soup%20CLI-blueviolet)](https://github.com/MakazhanAlpamys/Soup)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
+### Local-First Autonomous AI Coding IDE for Windows
 
 <p align="center">
-  <b>Coding Sahayi</b> breaks away from passive autocomplete. It is a full-fledged autonomous C# engineering environment that orchestrates specialized agent swarms, verifies code via bidirectional pseudo-terminals, and continuously fine-tunes local models on your successful patterns.
+  <strong>Orchestrates specialized agent swarms over native ConPTY pseudo-terminals, self-repairs failing unit tests autonomously, and continuously fine-tunes on verified project patches.</strong>
 </p>
 
-[Key Features](#-key-features) • [Architecture](#-architecture) • [Getting Started](#-getting-started) • [Autonomous Swarm](#-multi-agent-swarm) • [Roadmap](#-roadmap)
+<p align="center">
+  <em>Zero cloud subscriptions. Zero code egress. Zero API token bills.</em>
+</p>
+
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=flat-square&logo=windows)](https://codingsahayi.github.io/)
+[![Runtime](https://img.shields.io/badge/Runtime-.NET%208.0%20%2F%20C%23-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com/)
+[![UI](https://img.shields.io/badge/UI-WinUI%203-blue?style=flat-square)](https://learn.microsoft.com/windows/apps/winui/winui3/)
+[![Inference](https://img.shields.io/badge/Inference-Ollama%20%7C%20LM%20Studio-FF6B6B?style=flat-square)](https://ollama.ai/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+
+<br />
+
+<img src="https://codingsahayi.github.io/screenshots/ide-front.png" alt="Coding Sahayi Desktop Workspace" width="96%" style="border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.5);" />
 
 </div>
 
 ---
 
-## ⚡ Key Features
+## 💡 Why Coding Sahayi?
 
-* **🐝 Multi-Agent Swarm Orchestration:** Splits engineering tasks across specialized agents (Architect, Worker, Critic, Scribe) to eliminate monolithic hallucinations.
-* **🛡️ Zero-Leak Local AI:** Native support for local model runtimes (Ollama, LM Studio) paired with dynamic multi-provider fallback routing (NVIDIA NIM, DeepSeek, OpenAI).
-* **🔄 In-IDE Continuous Fine-Tuning:** Integrates with the [Soup](https://github.com/MakazhanAlpamys/Soup) CLI to fine-tune local models on consumer hardware using layer streaming directly from your SQLite `ProjectKnowledge` base.
-* **🧪 Autonomous Test-Driven Repair (TDD):** Runs test suites over interactive Windows ConPTY pseudo-terminals (`Pty.Net`). The Critic parses assertion failures and iterates autonomously until tests pass green.
-* **🔍 Visual Diff & Selective Acceptance:** Built-in side-by-side color-coded diff viewer (`DiffPlex`). Inspect, accept, or reject proposed code hunks before changes touch your disk.
-* **📊 API Metrics & Audit Dashboard:** Real-time visibility into token throughput, latency percentiles, error rates, and estimated cloud costs.
+Cloud-hosted AI coding assistants stream entire repositories to external APIs, charge per token, and degrade when compiler or test errors happen[cite: 2, 3]. Every failed compile retry becomes paid token churn[cite: 2].
 
----
+**Coding Sahayi moves the entire loop onto your workstation:**[cite: 2]
 
-## 🏗️ Architecture
-
-```text
-               ┌──────────────────────────────────────────────┐
-               │              User Workspace / UI             │
-               │         (WinUI 3 + Interactive Diff)         │
-               └──────────────────────┬───────────────────────┘
-                                      │
-                         [Swarm Orchestrator Loop]
-                                      │
-       ┌───────────────┬──────────────┴───────────────┬───────────────┐
-       ▼               ▼                             ▼               ▼
-┌──────────────┐┌──────────────┐               ┌──────────────┐┌──────────────┐
-│  Architect   ││    Worker    │               │    Critic    ││    Scribe    │
-│  (Planner &  ││ (Code Writer │               │ (Linter & PTY││(Documentation│
-│  AST Search) ││  & Patcher)  │               │ Test Runner) ││ & Knowledge) │
-└──────┬───────┘└──────┬───────┘               └──────┬───────┘└──────┬───────┘
-       │               │       [Fail: Re-roll]        │               │
-       │               └──────────────────────────────┘               ▼
-       │                          [Pass: Verify]             ┌─────────────────┐
-       │                                                     │ AppDbContext    │
-       ▼                                                     │ (SQLite Memory) │
-┌──────────────┐                                             └────────┬────────┘
-│ Hybrid Router│                                                      │
-│ (Local/Cloud)│                                                      ▼
-└──────┬───────┘                                             ┌─────────────────┐
-       │                                                     │ Soup CLI        │
-       ▼                                                     │ (LoRA Streaming)│
-[Ollama / APIs]                                              └─────────────────┘
-
-```
+* **100% Offline & Private:** Inference runs through local endpoints (like `qwen2.5-coder:7b` via Ollama)[cite: 2, 3]. Code never leaves your machine[cite: 2, 3].
+* **ConPTY Process Execution:** Intercepts real compilation and test suite output in background pseudo-terminals via `Pty.Net`[cite: 2].
+* **Autonomous Self-Repair:** When tests fail, runtime traces are fed back to the swarm to generate targeted fixes until the suite passes[cite: 2, 3].
+* **Gated Diff Review:** Uses DiffPlex for side-by-side diff inspection before any file touches the disk[cite: 2, 3].
+* **Continuous Local Fine-Tuning:** Exports verified passing patches to train local models on your actual codebase idioms[cite: 2, 3].
 
 ---
 
-## 🚀 Multi-Agent Swarm
+## 🔄 The 4-Agent Swarm Architecture
 
-| Agent | Role | Tools & Capabilities |
-| --- | --- | --- |
-| **Architect** | High-level decomposition | Semantic code search, Roslyn AST mapping, dependency graphs |
-| **Worker** | Implementation & Patching | Atomic file writing, targeted diff patching |
-| **Critic** | Verification & TDD | PTY test execution, Roslyn compiler diagnostic checks |
-| **Scribe** | Memory & Documentation | SQLite audit trails, continuous training dataset formatting |
+Rather than relying on one monolithic prompt, Coding Sahayi divides responsibilities across four specialized agents:[cite: 2, 3]
+
+```mermaid
+graph TD
+    A[<b>01 / Architect</b><br/>Analyzes Roslyn AST & Project Graph] -->|Task Decomposition| B[<b>02 / Worker</b><br/>Writes Scoped Code Patches]
+    B -->|Proposed Patch| C[<b>03 / Critic</b><br/>ConPTY Terminal & Test Runner]
+    C -->|dotnet test Fails| B
+    C -->|Suite Green| D[<b>04 / Scribe</b><br/>EF Core SQLite Memory Bank]
+    D -->|Continuous Training| E[Local Fine-Tuning Loop]
+
+```
+
+* **`Architect`**: Analyzes Roslyn AST syntax trees and project dependency graphs to plan atomic tasks before edits begin.
+
+
+* **`Worker`**: Emits surgical code modifications restricted to the target scope to prevent context drift.
+
+
+* **`Critic`**: Spawns an interactive ConPTY session, executes commands, parses structured stack traces, and loops until tests pass.
+
+
+* **`Scribe`**: Serializes verified patches, failing traces, and working solutions into an EF Core SQLite datastore.
+
+
 
 ---
 
-## 🛠️ Getting Started
+## 🖥️ Application Showcase
 
-### Prerequisites
+---
 
-* Windows 10/11 (x64)
-* [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-* [Ollama](https://ollama.ai) (optional for local models, recommended: `qwen2.5-coder:7b`)
-* Python 3.10+ (for Soup fine-tuning pipeline)
+## ⚡ Quick Start
 
-### Installation
+### 1. Prerequisites
 
-1. **Clone the Repository:**
-```bash
-git clone [https://github.com/codingsahayi/codingsahayi.github.io.git](https://github.com/codingsahayi/codingsahayi.github.io.git)
-cd CodingSahayi
-
-```
+* **OS:** Windows 10 (Build 19041+) or Windows 11.
 
 
-2. **Restore Dependencies & Build:**
-```bash
-dotnet restore
-dotnet build -c Release
-
-```
+* **Runtime:** [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 
-3. **Configure Local Model Runtime:**
-* Start Ollama:
-```bash
+* **Local Backend:** [Ollama](https://ollama.ai/) installed and running.
+
+
+
+### 2. Pull the Default Model
+
+```powershell
 ollama run qwen2.5-coder:7b
 
 ```
 
+### 3. Clone & Build
 
-* Open `Coding Sahayi` -> **Settings** -> Verify endpoint defaults to `http://localhost:11434/v1`.
+```powershell
+git clone [https://github.com/codingsahayi/codingsahayi.github.io.git]
+cd codingsahayi
 
-
-4. **Run the IDE:**
-```bash
-dotnet run --project CodingSahayi.csproj
+# Build using the x64 configuration
+dotnet restore
+dotnet build CodingSahayi.csproj -c Debug -p:Platform=x64
 
 ```
+
+### 4. Launch & Test
+
+Run the binary:
+
+```powershell
+.\bin\x64\Debug\net8.0-windows10.0.19041.0\CodingSahayi.exe
+
+```
+
+1. Click **Select Workspace** and pick your project root.
+2. Ensure the bottom selector is set to **`Ollama (Local) (Local | P1)`**.
+3. Run a prompt:
+> *"Run dotnet test, find the failing assertion, and propose a diff to fix it."*
 
 
 
 ---
 
-## 🤝 Contributing
+## 📊 Technical Comparison
 
-Contributions are welcome! Check out our [Issues](https://www.google.com/search?q=https://github.com/codingsahayi/codingsahayi.github.io/issues) page for open tasks labeled `good first issue` or `help wanted`.
+| Feature | Cloud AI Tools | Terminal CLI Agents | Coding Sahayi |
+| --- | --- | --- | --- |
+| **Hosting** | Cloud APIs | Terminal / Local | **Native Windows Desktop (WinUI 3)**<br> |
+| **Token Cost** | $20–$100+/mo | Varies | **$0.00 (Zero Token Bills)**<br> |
+| **Code Privacy** | Code sent over wire | Local or Cloud | **100% Local / Offline**<br> |
+| **Test Verification** | Manual copy-paste | Headless CLI | **Real ConPTY Pseudo-Terminal**<br> |
+| **Safety Gate** | Auto-write or inline | CLI confirmation | **Interactive Side-by-Side Diff Review**<br> |
+| **Fine-Tuning** | Not supported | Complex scripts | **In-IDE Continuous Layer Streaming**<br> |
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+---
+
+## 📂 Project Structure
+
+```text
+CodingSahayi/
+├── App.xaml / App.xaml.cs            # WinUI 3 Lifecycle & Bootstrap
+├── MainWindow.xaml / .cs             # Shell, Layout, and Chat Panels
+├── AgentContextManager.cs            # Tool-call Interception & Swarm Loop
+├── ToolRegistry.cs                   # Native Action Engine (ConPTY, IO)
+├── DiffReviewDialog.xaml / .cs       # DiffPlex Side-by-Side Reviewer
+├── Services/
+│   ├── ConPtyTerminalService.cs      # Terminal Integration via Pty.Net
+│   ├── WorkspaceAnalysisService.cs   # Roslyn AST Codebase Parser
+│   └── MemoryBankContext.cs          # EF Core SQLite Local Memory
+└── docs/                             # GitHub Pages Documentation & Assets
+
+```
+
+---
+
+## 🤝 Credits & Acknowledgments
+
+* **Continuous Fine-Tuning:** Developed using concepts from the [Soup CLI](https://github.com/MakazhanAlpamys) layer-streaming approach by **Alpamys Makazhan (@MakazhanAlpamys)**.
+
+
+* **Diff Viewer:** Powered by the open-source [.NET DiffPlex library](https://github.com/mmanela/diffplex).
+* **Terminal Engine:** Native Windows pseudo-terminal integration enabled by [Pty.Net](https://www.google.com/search?q=https://github.com/microsoft/pty.net).
+
+---
+
+## 👤 Author
+
+**Muhammed Shabeer**
+
+*Partner & Chief Technology Officer, Spectron Solutions Qatar*
+
+*Enterprise Solutions Architect operating across Doha, Qatar and Mattool (Kerala, India)*
+
+* 🌐 **Portfolio:** [muhammedshabeer.github.io](https://www.google.com/search?q=https://muhammedshabeer.github.io/)
+
+* 🐙 **GitHub:** [@MuhammedShabeer](https://www.google.com/search?q=https://github.com/MuhammedShabeer)
+
+* 💼 **LinkedIn:** [Muhammed Shabeer](https://www.google.com/search?q=https://www.linkedin.com/in/muhammed-shabeer-)
+
+* 📧 **Email:** [muhammedshabeerm@hotmail.com](https://www.google.com/search?q=mailto%3Amuhammedshabeerm%40hotmail.com)
+
 
 ---
 
 ## 📄 License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-</html>
-
-```
+Distributed under the **MIT License**. See `LICENSE` for details.
